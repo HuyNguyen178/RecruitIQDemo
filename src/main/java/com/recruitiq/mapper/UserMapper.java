@@ -15,6 +15,7 @@ public class UserMapper {
                 .email(user.getEmail())
                 .role(user.getRole())
                 .isActive(user.isActive())
+                .avatarUrl(user.getAvatarUrl())
                 .build();
     }
 
@@ -25,6 +26,7 @@ public class UserMapper {
                 .passwordHash(encodedPassword)
                 .role(request.getRole())
                 .isActive(request.isActive())
+                .avatarUrl(request.getAvatarUrl())
                 .build();
     }
 

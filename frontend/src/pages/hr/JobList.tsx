@@ -68,6 +68,7 @@ export default function JobList() {
 
   const handleLogoFileChange = async (file: File | null) => {
     if (!file) {
+      setFormData((prev) => ({ ...prev, logoUrl: "" }));
       return;
     }
 

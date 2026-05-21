@@ -38,6 +38,9 @@ public class User {
     @Builder.Default
     private boolean isActive = true;
 
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
+    private String avatarUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

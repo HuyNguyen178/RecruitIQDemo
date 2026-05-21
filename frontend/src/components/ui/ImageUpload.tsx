@@ -22,8 +22,7 @@ export function ImageUpload({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!currentImageUrl) return;
-    setPreview(currentImageUrl);
+    setPreview(currentImageUrl || null);
   }, [currentImageUrl]);
 
   useEffect(() => {
@@ -56,7 +55,7 @@ export function ImageUpload({
   };
 
   const handleRemove = () => {
-    setPreview(currentImageUrl || null);
+    setPreview(null);
     setFileName(null);
     if (inputRef.current) {
       inputRef.current.value = "";

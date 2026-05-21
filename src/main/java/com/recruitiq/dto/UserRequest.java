@@ -16,4 +16,5 @@ public class UserRequest {
     String password;
     User.Role role;
     boolean isActive;
+    String avatarUrl;
 }

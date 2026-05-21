@@ -89,6 +89,10 @@ public class UserService {
             user.setName(request.getName());
         }
 
+        if (request.getAvatarUrl() != null) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
@@ -106,6 +110,9 @@ public class UserService {
         user.setEmail(request.getEmail());
         user.setRole(request.getRole());
         user.setActive(request.isActive());
+        if (request.getAvatarUrl() != null) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
 
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));

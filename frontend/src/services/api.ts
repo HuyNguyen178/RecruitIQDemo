@@ -28,9 +28,12 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Handle unauthorized (e.g., redirect to login or logout)
-      console.error('Unauthorized, please login again.');
-      // Optional: window.location.href = '/auth/login';
+      const isAuthRequest = error.config && error.config.url && error.config.url.includes('/auth/');
+      if (!isAuthRequest) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        window.location.href = '/auth/login';
+      }
     }
     return Promise.reject(error);
   }

@@ -19,4 +19,6 @@ public class UserResponse {
     
     @JsonProperty("isActive")
     boolean isActive;
+    
+    String avatarUrl;
 }

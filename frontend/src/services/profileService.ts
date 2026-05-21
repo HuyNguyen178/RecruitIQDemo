@@ -6,13 +6,14 @@ export interface ProfileData {
   email: string;
   role?: string;
   isActive?: boolean;
-  profileImageUrl?: string;
+  avatarUrl?: string;
 }
 
 export interface ProfileUpdateData {
   name: string;
   email: string;
   password?: string;
+  avatarUrl?: string;
 }
 
 export const profileService = {
