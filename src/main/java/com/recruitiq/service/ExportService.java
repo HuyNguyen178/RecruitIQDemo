@@ -1,0 +1,230 @@
+package com.recruitiq.service;
+
+import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.kernel.colors.ColorConstants;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.properties.UnitValue;
+import com.recruitiq.dto.CandidateResponse;
+import com.recruitiq.dto.JobResponse;
+import com.recruitiq.model.Candidate;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ExportService {
+
+    private final JobService jobService;
+    private final CandidateService candidateService;
+
+    @Transactional(readOnly = true)
+    public byte[] exportToPdf(Long jobId) throws IOException {
+        JobResponse job = jobService.getJobById(jobId);
+
+        List<CandidateResponse> candidates = candidateService.getCandidatesByJob(jobId);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        try (PdfWriter writer = new PdfWriter(baos);
+             PdfDocument pdfDoc = new PdfDocument(writer);
+             Document document = new Document(pdfDoc)) {
+
+            PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
+            PdfFont regularFont = PdfFontFactory.createFont(StandardFonts.HELVETICA);
+
+            // Title
+            document.add(new Paragraph("RecruitIQ - Candidate Report")
+                    .setFont(boldFont)
+                    .setFontSize(18)
+                    .setFontColor(ColorConstants.DARK_GRAY));
+
+            document.add(new Paragraph("Job: " + job.getTitle())
+                    .setFont(boldFont)
+                    .setFontSize(14));
+
+            if (job.getDepartment() != null) {
+                document.add(new Paragraph("Department: " + job.getDepartment())
+                        .setFont(regularFont)
+                        .setFontSize(11));
+            }
+
+            document.add(new Paragraph("Total Candidates: " + candidates.size())
+                    .setFont(regularFont)
+                    .setFontSize(11));
+
+            document.add(new Paragraph("\n"));
+
+            // Table
+            float[] columnWidths = {0.5f, 2f, 1f, 1f, 1.5f, 1.5f};
+            Table table = new Table(UnitValue.createPercentArray(columnWidths))
+                    .useAllAvailableWidth();
+
+            // Header row
+            String[] headers = {"#", "Name", "Score", "Recommendation", "Decision", "Uploaded"};
+            for (String header : headers) {
+                Cell cell = new Cell()
+                        .add(new Paragraph(header).setFont(boldFont).setFontSize(10))
+                        .setBackgroundColor(ColorConstants.LIGHT_GRAY);
+                table.addHeaderCell(cell);
+            }
+
+            // Data rows
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            int rank = 1;
+            for (CandidateResponse candidate : candidates) {
+                // 1. STT
+                table.addCell(createCell(String.valueOf(rank++), regularFont));
+
+                // 2. Name
+                table.addCell(createCell(
+                        candidate.getFullName() != null ? candidate.getFullName() : candidate.getOriginalFilename(),
+                        regularFont));
+
+                // 3. Score
+                table.addCell(createCell(
+                        candidate.getTotalScore() != null ? String.format("%.1f", candidate.getTotalScore()) : "N/A",
+                        regularFont));
+
+                // 4. Recommendation
+                table.addCell(createCell(
+                        candidate.getRecommendation() != null ? candidate.getRecommendation().replace("_", " ") : "N/A",
+                        regularFont));
+
+                // 5. Decision
+                table.addCell(createCell(
+                        candidate.getDecisionStatus() != null ? candidate.getDecisionStatus().replace("_", " ") : "PENDING",
+                        regularFont));
+
+                // 6. Uploaded At
+                table.addCell(createCell(
+                        candidate.getUploadedAt() != null ? candidate.getUploadedAt().format(formatter) : "N/A",
+                        regularFont));
+            }
+
+            document.add(table);
+
+            document.add(new Paragraph("\nGenerated by RecruitIQ")
+                    .setFont(regularFont)
+                    .setFontSize(9)
+                    .setFontColor(ColorConstants.GRAY));
+        }
+
+        return baos.toByteArray();
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportToExcel(Long jobId) throws IOException {
+        JobResponse job = jobService.getJobById(jobId);
+
+        List<CandidateResponse> candidates = candidateService.getCandidatesByJob(jobId);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Candidates");
+
+            // Header styles
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            // Create header row
+            Row headerRow = sheet.createRow(0);
+            String[] columns = {"Rank", "Name", "Email", "Total Score", "Skills Score",
+                    "Experience Score", "Education Score", "Cert Score", "Soft Skills Score",
+                    "Recommendation", "Decision", "HR Notes", "Processing Status", "Uploaded At"};
+
+            for (int i = 0; i < columns.length; i++) {
+                org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
+                cell.setCellValue(columns[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // Data rows
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+            int rowNum = 1;
+            int rank = 1;
+            for (CandidateResponse candidate : candidates) {
+                Row row = sheet.createRow(rowNum++);
+
+                // 0. Rank
+                row.createCell(0).setCellValue(rank++);
+
+                // 1. Name: Ưu tiên Full Name, nếu không có thì dùng tên file gốc
+                row.createCell(1).setCellValue(
+                        candidate.getFullName() != null ? candidate.getFullName() : candidate.getOriginalFilename());
+
+                // 2. Email
+                row.createCell(2).setCellValue(candidate.getEmail() != null ? candidate.getEmail() : "");
+
+                // 3. Total Score
+                row.createCell(3).setCellValue(candidate.getTotalScore() != null ? candidate.getTotalScore() : 0.0);
+
+                // 4. Skills Score
+                row.createCell(4).setCellValue(candidate.getSkillsScore() != null ? candidate.getSkillsScore() : 0.0);
+
+                // 5. Experience Score
+                row.createCell(5).setCellValue(candidate.getExperienceScore() != null ? candidate.getExperienceScore() : 0.0);
+
+                // Lưu ý: Các trường Education/Cert/Soft Skills Score hiện chưa có trong CandidateResponse.java
+                // Bạn nên bổ sung chúng vào DTO hoặc tạm thời để giá trị 0.0 như bên dưới:
+                row.createCell(6).setCellValue(0.0); // Education Score
+                row.createCell(7).setCellValue(0.0); // Cert Score
+                row.createCell(8).setCellValue(0.0); // Soft Skills Score
+
+                // 9. Recommendation: Đã là String nên không dùng .name()
+                row.createCell(9).setCellValue(candidate.getRecommendation() != null ? candidate.getRecommendation() : "");
+
+                // 10. Decision Status: Đã là String nên không dùng .name()
+                row.createCell(10).setCellValue(candidate.getDecisionStatus() != null ? candidate.getDecisionStatus() : "PENDING");
+
+                // 11. HR Notes
+                row.createCell(11).setCellValue(candidate.getHrNotes() != null ? candidate.getHrNotes() : "");
+
+                // 12. Processing Status: Đã là String nên không dùng .name()
+                row.createCell(12).setCellValue(candidate.getProcessingStatus() != null ? candidate.getProcessingStatus() : "");
+
+                // 13. Uploaded At
+                row.createCell(13).setCellValue(
+                        candidate.getUploadedAt() != null ? candidate.getUploadedAt().format(formatter) : "");
+            }
+
+            // Auto-size columns
+            for (int i = 0; i < columns.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            Sheet infoSheet = workbook.createSheet("Job Info");
+            infoSheet.createRow(0).createCell(0).setCellValue("Job Title: " + job.getTitle());
+            infoSheet.createRow(1).createCell(0).setCellValue("Department: " + (job.getDepartment() != null ? job.getDepartment() : "N/A"));
+            infoSheet.createRow(2).createCell(0).setCellValue("Status: " + (job.getStatus() != null ? job.getStatus() : "N/A"));
+            infoSheet.createRow(3).createCell(0).setCellValue("Total Candidates: " + candidates.size());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            workbook.write(baos);
+            return baos.toByteArray();
+        }
+    }
+
+    private Cell createCell(String content, PdfFont font) {
+        return new Cell().add(new Paragraph(content != null ? content : "").setFont(font).setFontSize(9));
+    }
+}
