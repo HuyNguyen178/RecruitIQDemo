@@ -1,9 +1,9 @@
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Users, Shield, Briefcase } from "lucide-react";
+import UserMenuDropdown from "../components/UserMenuDropdown";
 
 export default function AdminLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
 
   const navigation = [
     { name: "Global Stats", href: "/admin", icon: LayoutDashboard },
@@ -11,15 +11,9 @@ export default function AdminLayout() {
     { name: "Jobs", href: "/admin/jobs", icon: Briefcase }
   ];
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    navigate("/auth/login");
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      <aside className="w-64 bg-slate-900 text-slate-300 flex min-h-screen flex-col border-r border-slate-800">
+    <div className="h-screen bg-slate-50 flex overflow-hidden">
+      <aside className="w-64 bg-slate-900 text-slate-300 flex h-screen flex-col border-r border-slate-800 flex-shrink-0 overflow-y-auto">
         <div>
           <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">
             <Shield className="w-5 h-5 text-fuchsia-500 mr-2" />
@@ -47,28 +41,12 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm z-10">
           <h2 className="text-lg font-semibold text-slate-800">
             {navigation.find(n => location.pathname === n.href || (n.href !== "/admin" && location.pathname.startsWith(n.href)))?.name || "Dashboard"}
           </h2>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/admin/profile"
-              className="rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition"
-            >
-              Profile
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition"
-            >
-              Logout
-            </button>
-            <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold">
-              AD
-            </div>
-          </div>
+          <UserMenuDropdown profilePath="/admin/profile" />
         </header>
         <div className="flex-1 overflow-auto p-8 bg-slate-50">
           <Outlet />

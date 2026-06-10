@@ -3,16 +3,20 @@ package com.recruitiq.service;
 import com.recruitiq.dto.JobRequest;
 import com.recruitiq.dto.JobResponse;
 import com.recruitiq.mapper.JobMapper;
+import com.recruitiq.model.City;
 import com.recruitiq.model.Job;
 import com.recruitiq.model.User;
+import com.recruitiq.repository.CityRepository;
 import com.recruitiq.repository.CandidateRepository;
 import com.recruitiq.repository.JobRepository;
+import com.recruitiq.validation.JobInputValidator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,21 +26,26 @@ import java.util.stream.Collectors;
 public class JobService {
 
     private final JobRepository jobRepository;
+    private final CityRepository cityRepository;
+    private final CandidateRepository candidateRepository;
     private final JobMapper jobMapper;
-
 
     @Transactional
     public JobResponse createJob(JobRequest request, User createdBy) {
-        Job job = jobMapper.toEntity(request, createdBy);
+        JobInputValidator.validate(request, true);
+        City city = resolveCity(request.getCityId());
+        Job job = jobMapper.toEntity(request, createdBy, city);
         Job savedJob = jobRepository.save(job);
         return jobMapper.toResponse(savedJob);
     }
 
     @Transactional
     public JobResponse updateJob(Long jobId, JobRequest request) {
+        JobInputValidator.validate(request, false);
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found: " + jobId));
-        jobMapper.updateEntityFromRequest(request, job);
+        City city = resolveCity(request.getCityId());
+        jobMapper.updateEntityFromRequest(request, job, city);
         return jobMapper.toResponse(jobRepository.save(job));
     }
 
@@ -66,7 +75,7 @@ public class JobService {
 
     @Transactional(readOnly = true)
     public JobResponse getJobById(Long jobId) {
-        return jobRepository.findById(jobId)
+        return jobRepository.findByIdWithCreatedBy(jobId)
                 .map(jobMapper::toResponse)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found with id: " + jobId));
     }
@@ -75,9 +84,9 @@ public class JobService {
     public List<JobResponse> getJobsByUser(User user) {
         List<Job> jobs;
         if (user.getRole() == User.Role.ADMIN) {
-            jobs = jobRepository.findAllByOrderByCreatedAtDesc();
+            jobs = jobRepository.findAllWithCreatedByOrderByCreatedAtDesc();
         } else {
-            jobs = jobRepository.findByCreatedByOrderByCreatedAtDesc(user);
+            jobs = jobRepository.findByCreatedByWithCreatedByOrderByCreatedAtDesc(user);
         }
 
         return jobs.stream()
@@ -85,11 +94,75 @@ public class JobService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Closes all OPEN jobs whose deadline is before today (deadline day is still open).
+     */
+    @Transactional
+    public int closeExpiredJobs() {
+        LocalDate today = LocalDate.now();
+        List<Job> expiredJobs = jobRepository.findByStatusAndDeadlineBefore(Job.JobStatus.OPEN, today);
+        if (expiredJobs.isEmpty()) {
+            return 0;
+        }
+        expiredJobs.forEach(job -> job.setStatus(Job.JobStatus.CLOSED));
+        jobRepository.saveAll(expiredJobs);
+        log.info("Auto-closed {} job(s) past deadline", expiredJobs.size());
+        return expiredJobs.size();
+    }
+
+    @Transactional
+    public void closeJobIfExpired(Job job) {
+        if (job.getStatus() == Job.JobStatus.OPEN
+                && job.getDeadline() != null
+                && job.getDeadline().isBefore(LocalDate.now())) {
+            job.setStatus(Job.JobStatus.CLOSED);
+            jobRepository.save(job);
+            log.info("Auto-closed job id={} (deadline={})", job.getId(), job.getDeadline());
+        }
+    }
+
+    public boolean isOpenForApplications(Job job) {
+        if (job.getStatus() != Job.JobStatus.OPEN) {
+            return false;
+        }
+        if (job.getDeadline() == null) {
+            return true;
+        }
+        return !job.getDeadline().isBefore(LocalDate.now());
+    }
+
+    @Transactional
     public List<JobResponse> getAllJobsForCandidate() {
+        closeExpiredJobs();
         return jobRepository.findByStatusOrderByCreatedAtDesc(Job.JobStatus.OPEN)
                 .stream()
                 .map(jobMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Candidates may view a closed job only if they already submitted an application (e.g. from My Applications).
+     */
+    @Transactional
+    public JobResponse getJobByIdForCandidate(Long jobId, String candidateEmail) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new EntityNotFoundException("Job not found with id: " + jobId));
+        closeJobIfExpired(job);
+
+        boolean hasApplied = candidateEmail != null
+                && candidateRepository.existsByJobIdAndUserEmail(jobId, candidateEmail);
+
+        if (!isOpenForApplications(job) && !hasApplied) {
+            throw new EntityNotFoundException("Job not found or no longer accepting applications");
+        }
+        return jobMapper.toResponse(job);
+    }
+
+    private City resolveCity(Long cityId) {
+        if (cityId == null) {
+            throw new IllegalArgumentException("Please select a valid city.");
+        }
+        return cityRepository.findByIdAndActiveTrue(cityId)
+                .orElseThrow(() -> new IllegalArgumentException("Selected city does not exist or is inactive."));
     }
 }

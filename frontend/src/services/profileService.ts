@@ -10,9 +10,10 @@ export interface ProfileData {
 }
 
 export interface ProfileUpdateData {
-  name: string;
-  email: string;
+  name?: string;
+  email?: string;
   password?: string;
+  currentPassword?: string;
   avatarUrl?: string;
 }
 

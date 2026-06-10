@@ -5,7 +5,6 @@ import com.recruitiq.model.User;
 import com.recruitiq.service.CandidateService;
 import com.recruitiq.service.ExportService;
 import com.recruitiq.service.UserService;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.FileSystemResource;

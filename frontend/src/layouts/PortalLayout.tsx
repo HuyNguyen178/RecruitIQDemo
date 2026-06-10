@@ -1,20 +1,14 @@
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, Link, useLocation } from "react-router-dom";
+import UserMenuDropdown from "../components/UserMenuDropdown";
 
 export default function PortalLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
   const navigation = [
     { name: "Jobs", href: "/portal/jobs" },
     { name: "My Applications", href: "/portal/my-applications" },
   ];
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    navigate("/auth/login");
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -43,20 +37,7 @@ export default function PortalLayout() {
           </div>
           <div className="flex items-center gap-4">
             {token ? (
-              <>
-                <Link
-                  to="/portal/profile"
-                  className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
-                >
-                  Profile
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm font-semibold text-slate-600 hover:text-red-600 transition-colors"
-                >
-                  Logout
-                </button>
-              </>
+              <UserMenuDropdown profilePath="/portal/profile" />
             ) : (
               <Link to="/auth/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
                 Login

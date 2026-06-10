@@ -71,7 +71,7 @@ public class LlmApiClient {
                 throw new RuntimeException("Empty response from Gemini API");
             }
 
-            // 2. Trích xuất dữ liệu từ Response của Gemini
+            // 2. Trích xuất dữ liệu từ Response của Geminin
             List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.get("candidates");
             if (candidates == null || candidates.isEmpty()) {
                 throw new RuntimeException("No candidates in Gemini API response");

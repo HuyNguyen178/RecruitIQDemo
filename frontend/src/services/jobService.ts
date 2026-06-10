@@ -4,13 +4,17 @@ export interface Job {
   id?: number;
   title: string;
   department: string;
-  location: string;
+  location?: string;
+  cityId: number;
+  cityName?: string;
   jdText: string;
   requiredSkills: string;
   minExperienceYears?: number;
   requiredEducation?: 'HIGH_SCHOOL' | 'BACHELOR' | 'MASTER' | 'PHD';
   deadline?: string;
   status: 'OPEN' | 'CLOSED';
+  createdByName?: string;
+  createdByEmail?: string;
   createdAt?: string;
   logoUrl?: string;
   salary?: string;

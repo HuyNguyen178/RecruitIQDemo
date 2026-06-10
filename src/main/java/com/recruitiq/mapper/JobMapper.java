@@ -2,18 +2,25 @@ package com.recruitiq.mapper;
 
 import com.recruitiq.dto.JobRequest;
 import com.recruitiq.dto.JobResponse;
+import com.recruitiq.model.City;
 import com.recruitiq.model.Job;
 import com.recruitiq.model.User;
 import org.springframework.stereotype.Component;
 
 @Component
 public class JobMapper {
+
     public JobResponse toResponse(Job job) {
+        String cityName = job.getCity() != null ? job.getCity().getName() : null;
+        String location = job.getLocation() != null ? job.getLocation() : cityName;
+
         return JobResponse.builder()
                 .id(job.getId())
                 .title(job.getTitle())
                 .department(job.getDepartment())
-                .location(job.getLocation())
+                .location(location)
+                .cityId(job.getCity() != null ? job.getCity().getId() : null)
+                .cityName(cityName)
                 .jdText(job.getJdText())
                 .requiredSkills(job.getRequiredSkills())
                 .minExperienceYears(job.getMinExperienceYears())
@@ -21,20 +28,24 @@ public class JobMapper {
                 .deadline(job.getDeadline())
                 .logoUrl(job.getLogoUrl())
                 .salary(job.getSalary())
-                .createdByName(job.getCreatedBy().getName())
+                .createdByName(job.getCreatedBy() != null ? job.getCreatedBy().getName() : null)
+                .createdByEmail(job.getCreatedBy() != null ? job.getCreatedBy().getEmail() : null)
                 .candidateCount(job.getCandidates().size())
                 .status(job.getStatus().name())
                 .createdAt(job.getCreatedAt())
                 .build();
     }
 
-    public Job toEntity(JobRequest request, User user) {
-        if (request == null) return null;
+    public Job toEntity(JobRequest request, User user, City city) {
+        if (request == null) {
+            return null;
+        }
 
         return Job.builder()
                 .title(request.getTitle())
                 .department(request.getDepartment())
-                .location(request.getLocation())
+                .city(city)
+                .location(city.getName())
                 .jdText(request.getJdText())
                 .requiredSkills(request.getRequiredSkills())
                 .minExperienceYears(request.getMinExperienceYears())
@@ -46,12 +57,16 @@ public class JobMapper {
                 .createdBy(user)
                 .build();
     }
-    public void updateEntityFromRequest(JobRequest request, Job job) {
-        if (request == null || job == null) return;
+
+    public void updateEntityFromRequest(JobRequest request, Job job, City city) {
+        if (request == null || job == null) {
+            return;
+        }
 
         job.setTitle(request.getTitle());
         job.setDepartment(request.getDepartment());
-        job.setLocation(request.getLocation());
+        job.setCity(city);
+        job.setLocation(city.getName());
         job.setJdText(request.getJdText());
         job.setRequiredSkills(request.getRequiredSkills());
         job.setMinExperienceYears(request.getMinExperienceYears());

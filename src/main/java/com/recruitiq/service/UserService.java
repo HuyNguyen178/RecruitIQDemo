@@ -5,6 +5,7 @@ import com.recruitiq.dto.UserResponse;
 import com.recruitiq.mapper.UserMapper;
 import com.recruitiq.model.User;
 import com.recruitiq.repository.UserRepository;
+import com.recruitiq.validation.UserInputValidator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -38,6 +40,7 @@ public class UserService {
 
     @Transactional
     public UserResponse createUser(UserRequest request) {
+        UserInputValidator.validateForCreate(request);
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email already exists");
         }
@@ -77,28 +80,51 @@ public class UserService {
         User user = userRepository.findByEmail(currentEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + currentEmail));
 
-        // If email is changing, ensure uniqueness
-        if (request.getEmail() != null && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
+        boolean emailChanging = request.getEmail() != null
+                && !request.getEmail().equalsIgnoreCase(user.getEmail());
+        boolean passwordChanging = request.getPassword() != null && !request.getPassword().trim().isEmpty();
+        boolean nameChanging = request.getName() != null && !request.getName().equals(user.getName());
+        boolean avatarChanging = request.getAvatarUrl() != null
+                && !Objects.equals(normalizeAvatarUrl(request.getAvatarUrl()), user.getAvatarUrl());
+
+        if (emailChanging || passwordChanging || nameChanging || avatarChanging) {
+            verifyCurrentPassword(request, user);
+        }
+
+        if (emailChanging) {
             if (userRepository.existsByEmail(request.getEmail())) {
                 throw new IllegalArgumentException("Email already exists");
             }
             user.setEmail(request.getEmail());
         }
 
-        if (request.getName() != null) {
+        if (nameChanging) {
             user.setName(request.getName());
         }
 
-        if (request.getAvatarUrl() != null) {
-            user.setAvatarUrl(request.getAvatarUrl());
+        if (avatarChanging) {
+            user.setAvatarUrl(normalizeAvatarUrl(request.getAvatarUrl()));
         }
 
-        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
+        if (passwordChanging) {
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
 
         User updated = userRepository.save(user);
         return userMapper.toUserListResponse(updated);
+    }
+
+    private void verifyCurrentPassword(UserRequest request, User user) {
+        if (request.getCurrentPassword() == null || request.getCurrentPassword().trim().isEmpty()) {
+            throw new IllegalArgumentException("Current password is required to confirm this change.");
+        }
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect.");
+        }
+    }
+
+    private String normalizeAvatarUrl(String avatarUrl) {
+        return avatarUrl == null || avatarUrl.isBlank() ? null : avatarUrl;
     }
 
     @Transactional

@@ -31,6 +31,10 @@ public class Job {
 
     private String location;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "city_id")
+    private City city;
+
     @Column(name = "jd_text", columnDefinition = "TEXT")
     private String jdText;
 

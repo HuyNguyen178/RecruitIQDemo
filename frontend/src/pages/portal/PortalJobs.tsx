@@ -2,13 +2,15 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { portalService } from "../../services/portalService";
 import { type Job } from "../../services/jobService";
+import { cityService, type City } from "../../services/cityService";
 import { Button } from "../../components/ui/Button";
 import {
-  Search, MapPin, Award, Sparkles, Briefcase, DollarSign, Calendar, ChevronRight, HelpCircle
+  Search, MapPin, Award, Briefcase, DollarSign, Calendar
 } from "lucide-react";
 
 export default function PortalJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -22,11 +24,17 @@ export default function PortalJobs() {
   const [selectedLocation, setSelectedLocation] = useState<string>("All");
   const [selectedExperience, setSelectedExperience] = useState<string>("All");
 
+  const getJobLocation = (job: Job) => job.cityName || job.location || "";
+
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const data = await portalService.getOpenJobs();
-        setJobs(data);
+        const [jobsData, citiesData] = await Promise.all([
+          portalService.getOpenJobs(),
+          cityService.getActiveCities(),
+        ]);
+        setJobs(jobsData);
+        setCities(citiesData);
       } catch (error) {
         console.error("Failed to load portal jobs", error);
       } finally {
@@ -50,8 +58,8 @@ export default function PortalJobs() {
       }
     };
 
-    fetchJobs();
-    fetchApplied();
+    void fetchJobs();
+    void fetchApplied();
   }, []);
 
   const handleApplyClick = (jobId: number | undefined, e: React.MouseEvent) => {
@@ -75,7 +83,7 @@ export default function PortalJobs() {
     setUploading(true);
     try {
       await portalService.applyForJob(selectedJobId, file);
-      alert("Application Submitted Successfully! AI is reviewing your CV.");
+      alert("Your application has been submitted successfully! The recruiter will review it shortly.");
       navigate("/portal/my-applications");
     } catch (error: any) {
       console.error("Failed to apply", error);
@@ -92,17 +100,16 @@ export default function PortalJobs() {
     navigate(`/portal/jobs/${jobId}`);
   };
 
-  // Locations extract dynamically
-  const uniqueLocations = ["All", ...Array.from(new Set(jobs.map(j => j.location).filter(Boolean)))];
-
   // Client-side search and filtering
   const filteredJobs = jobs.filter((job) => {
+    const jobLocation = getJobLocation(job);
+
     // 1. Search Query Match
-    const searchString = `${job.title || ""} ${job.department || ""} ${job.location || ""} ${job.jdText || ""} ${job.requiredSkills || ""}`.toLowerCase();
+    const searchString = `${job.title || ""} ${job.department || ""} ${jobLocation} ${job.jdText || ""} ${job.requiredSkills || ""}`.toLowerCase();
     const matchesSearch = searchString.includes(searchTerm.toLowerCase());
 
-    // 2. Location Match
-    const matchesLocation = selectedLocation === "All" || job.location === selectedLocation;
+    // 2. Location Match (city from master list)
+    const matchesLocation = selectedLocation === "All" || jobLocation === selectedLocation;
 
     // 3. Experience Match
     let matchesExperience = true;
@@ -133,14 +140,11 @@ export default function PortalJobs() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-100/60 rounded-full blur-[100px] pointer-events-none"></div>
 
         <div className="max-w-3xl relative z-10 space-y-6">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/40 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md border border-white/30">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-700" /> Breakthrough your career with RecruitIQ AI Matching
-          </span>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
             Find your dream job at <span className="text-emerald-700 relative inline-block">RecruitIQ<span className="absolute bottom-0 left-0 w-full h-1.5 bg-emerald-700/20 rounded-full"></span></span>
           </h1>
           <p className="text-lg text-slate-700 max-w-xl leading-relaxed font-medium">
-            Our AI analyzes your CV and connects you to relevant opportunities quickly and clearly.
+            Browse open positions and submit your CV directly to the hiring team.
           </p>
 
           {/* Elite SaaS Search & Filter Box */}
@@ -169,8 +173,10 @@ export default function PortalJobs() {
                     className="w-full bg-transparent border-none focus:outline-none px-3 py-2 text-slate-700 font-bold text-sm appearance-none cursor-pointer pr-8"
                   >
                     <option value="All" className="text-slate-900 font-bold bg-white">All Locations</option>
-                    {uniqueLocations.filter(loc => loc !== "All").map((loc) => (
-                      <option key={loc} value={loc} className="text-slate-900 font-bold bg-white">{loc}</option>
+                    {cities.map((city) => (
+                      <option key={city.id} value={city.name} className="text-slate-900 font-bold bg-white">
+                        {city.name}
+                      </option>
                     ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
@@ -217,11 +223,11 @@ export default function PortalJobs() {
         </div>
       </div>
 
-      {/* Main Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Job Listings */}
+      <div className="grid grid-cols-1 gap-8">
 
-        {/* Left Side: Filter and Job Listings (70% width) */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Job Listings */}
+        <div className="space-y-6">
 
 
 
@@ -291,7 +297,7 @@ export default function PortalJobs() {
                             <span className="text-slate-300">•</span>
                             <span className="inline-flex items-center gap-1 text-slate-600 font-semibold bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded text-xs shrink-0">
                               <MapPin className="w-3.5 h-3.5 text-[#00b14f] shrink-0" />
-                              {job.location || 'Remote'}
+                              {getJobLocation(job) || 'Remote'}
                             </span>
                           </div>
 
@@ -369,69 +375,6 @@ export default function PortalJobs() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Right Side: Information widgets and AI tips (30% width) */}
-        <div className="lg:col-span-1 space-y-6">
-
-          {/* AI Smart Match card */}
-          <div className="bg-slate-900 rounded-3xl p-6 text-white relative overflow-hidden shadow-lg border border-slate-800">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-500/20 rounded-full blur-[40px] pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/20 rounded-full blur-[40px] pointer-events-none"></div>
-
-            <div className="relative z-10 space-y-4">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-white/10 rounded text-[9px] font-bold uppercase tracking-wider">
-                AI Privilege
-              </span>
-              <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-                AI Smart Match ✨
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                Want to know how well your profile matches the job? Submit your CV now for deep AI analysis!
-              </p>
-              <div className="pt-2">
-                {token ? (
-                  <Link to="/portal/my-applications" className="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-300 hover:text-white transition-colors">
-                    View Assessment History <ChevronRight className="w-4 h-4" />
-                  </Link>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-300">Login to view assessment history</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Guide Card: How to pass AI Screening */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
-            <div className="border-b border-slate-100 pb-3 flex items-center gap-2">
-              <HelpCircle className="w-5 h-5 text-[#00b14f]" />
-              <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">AI Screening Guide</h3>
-            </div>
-
-            <ul className="space-y-3 text-xs text-slate-600 font-medium">
-              <li className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#00b14f] shrink-0 mt-1.5"></span>
-                <span><strong>Use standard format</strong>: Save and submit your CV as a PDF for the most accurate AI text scanning.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#00b14f] shrink-0 mt-1.5"></span>
-                <span><strong>Add skill keywords</strong>: Read the "Required Skills" section carefully and include compatible skills in your CV.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#00b14f] shrink-0 mt-1.5"></span>
-                <span><strong>Clear experience description</strong>: Clearly state the number of years of experience and technologies practically used.</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Quick FAQ card */}
-          <div className="bg-emerald-50/50 rounded-2xl p-6 border border-emerald-100/50 space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800">About RecruitIQ Matching</h4>
-            <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-              RecruitIQ is a smart recruitment and management platform powered by an advanced candidate matching engine. Employers will directly evaluate your profile and send you an interview schedule through the management system.
-            </p>
-          </div>
-
         </div>
 
       </div>

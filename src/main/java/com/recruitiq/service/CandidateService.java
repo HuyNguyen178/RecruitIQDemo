@@ -1,8 +1,14 @@
 package com.recruitiq.service;
 
-import com.recruitiq.dto.*;
+import com.recruitiq.dto.CandidateListResponse;
+import com.recruitiq.dto.CandidateResponse;
+import com.recruitiq.dto.DecisionRequest;
+import com.recruitiq.dto.FileDownloadDto;
 import com.recruitiq.mapper.CandidateMapper;
-import com.recruitiq.model.*;
+import com.recruitiq.model.Candidate;
+import com.recruitiq.model.Job;
+import com.recruitiq.model.Shortlist;
+import com.recruitiq.model.User;
 import com.recruitiq.repository.CandidateRepository;
 import com.recruitiq.repository.JobRepository;
 import com.recruitiq.repository.ShortlistRepository;
@@ -33,6 +39,7 @@ public class CandidateService {
     private final AiProcessingService aiProcessingService;
     private final CandidateMapper candidateMapper;
     private final JobRepository jobRepository;
+    private final JobService jobService;
     private final UserRepository userRepository;
 
     @Transactional
@@ -192,6 +199,11 @@ public class CandidateService {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found"));
 
+        jobService.closeJobIfExpired(job);
+        if (!jobService.isOpenForApplications(job)) {
+            throw new IllegalArgumentException("This job is closed and no longer accepting applications.");
+        }
+
         // 2. Lấy User từ email
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -263,39 +275,133 @@ public class CandidateService {
     // --- CHO DASHBOARD HR OFFICER ---
     @Transactional(readOnly = true)
     public Map<String, Object> getHRDashboardStats() {
-        long totalCandidates = candidateRepository.count();
-        long pendingAiManual = candidateRepository.findAll().stream()
-                .filter(c -> "PENDING".equals(c.getProcessingStatus().name()))
+        List<Candidate> allCandidates = candidateRepository.findAll();
+        List<Job> allJobs = jobRepository.findAll();
+
+        long totalResumes = allCandidates.size();
+        long pendingProcessing = allCandidates.stream()
+                .filter(c -> c.getProcessingStatus() != Candidate.ProcessingStatus.COMPLETED 
+                        && c.getProcessingStatus() != Candidate.ProcessingStatus.ERROR)
+                .count();
+        long aiSuccessCount = allCandidates.stream()
+                .filter(c -> c.getProcessingStatus() == Candidate.ProcessingStatus.COMPLETED)
+                .count();
+        long aiErrorCount = allCandidates.stream()
+                .filter(c -> c.getProcessingStatus() == Candidate.ProcessingStatus.ERROR)
                 .count();
 
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalResumes", totalCandidates);
-        stats.put("pendingProcessing", pendingAiManual);
+        long totalJobs = allJobs.size();
+        long activeJobsCount = allJobs.stream()
+                .filter(j -> j.getStatus() == Job.JobStatus.OPEN)
+                .count();
+        long closedJobsCount = totalJobs - activeJobsCount;
 
-        List<CandidateResponse> topTalents = candidateRepository.findAll().stream()
+        Map<String, Long> candidatesByStatus = allCandidates.stream()
+                .collect(Collectors.groupingBy(
+                        c -> c.getShortlist() != null ? c.getShortlist().getDecisionStatus().name() : "PENDING",
+                        Collectors.counting()
+                ));
+
+        Map<String, Long> candidatesCountByJob = allCandidates.stream()
+                .filter(c -> c.getJob() != null)
+                .collect(Collectors.groupingBy(c -> c.getJob().getTitle(), Collectors.counting()));
+
+        List<Map<String, Object>> candidatesByJob = candidatesCountByJob.entrySet().stream()
+                .map(entry -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("jobTitle", entry.getKey());
+                    m.put("count", entry.getValue());
+                    return m;
+                })
+                .sorted((m1, m2) -> Long.compare((Long) m2.get("count"), (Long) m1.get("count")))
+                .limit(6)
+                .collect(Collectors.toList());
+
+        List<CandidateResponse> recentCandidates = allCandidates.stream()
+                .sorted((c1, c2) -> {
+                    if (c1.getUploadedAt() == null && c2.getUploadedAt() == null) return 0;
+                    if (c1.getUploadedAt() == null) return 1;
+                    if (c2.getUploadedAt() == null) return -1;
+                    return c2.getUploadedAt().compareTo(c1.getUploadedAt());
+                })
+                .limit(5)
+                .map(candidateMapper::toResponse)
+                .collect(Collectors.toList());
+
+        List<CandidateResponse> topTalents = allCandidates.stream()
                 .filter(c -> c.getScoreRecord() != null)
                 .sorted((c1, c2) -> Double.compare(c2.getScoreRecord().getTotalScore(), c1.getScoreRecord().getTotalScore()))
                 .limit(5)
                 .map(candidateMapper::toResponse)
                 .collect(Collectors.toList());
 
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalResumes", totalResumes);
+        stats.put("pendingProcessing", pendingProcessing);
+        stats.put("aiSuccessCount", aiSuccessCount);
+        stats.put("aiErrorCount", aiErrorCount);
+        stats.put("totalJobs", totalJobs);
+        stats.put("activeJobsCount", activeJobsCount);
+        stats.put("closedJobsCount", closedJobsCount);
+        stats.put("candidatesByStatus", candidatesByStatus);
+        stats.put("candidatesByJob", candidatesByJob);
+        stats.put("recentCandidates", recentCandidates);
         stats.put("topTalents", topTalents);
+
         return stats;
     }
 
     // --- CHO DASHBOARD ADMIN ---
     @Transactional(readOnly = true)
     public Map<String, Object> getAdminGlobalStats() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalUsers", userRepository.count());
-        stats.put("totalJobs", jobRepository.count());
-        stats.put("totalCandidates", candidateRepository.count());
+        List<User> allUsers = userRepository.findAll();
+        List<Job> allJobs = jobRepository.findAll();
+        List<Candidate> allCandidates = candidateRepository.findAll();
 
+        long totalUsers = allUsers.size();
+        long activeUsers = allUsers.stream().filter(User::isActive).count();
+        long inactiveUsers = totalUsers - activeUsers;
+
+        long totalJobs = allJobs.size();
+        long openJobs = allJobs.stream().filter(j -> j.getStatus() == Job.JobStatus.OPEN).count();
+        long closedJobs = totalJobs - openJobs;
+
+        long totalCandidates = allCandidates.size();
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-        long newCVsThisWeek = candidateRepository.findAll().stream()
-                .filter(c -> c.getUploadedAt().isAfter(sevenDaysAgo))
+        long newCVsThisWeek = allCandidates.stream()
+                .filter(c -> c.getUploadedAt() != null && c.getUploadedAt().isAfter(sevenDaysAgo))
                 .count();
+
+        long aiSuccessCount = allCandidates.stream()
+                .filter(c -> c.getProcessingStatus() == Candidate.ProcessingStatus.COMPLETED)
+                .count();
+        long aiErrorCount = allCandidates.stream()
+                .filter(c -> c.getProcessingStatus() == Candidate.ProcessingStatus.ERROR)
+                .count();
+        long aiPendingCount = totalCandidates - aiSuccessCount - aiErrorCount;
+
+        Map<String, Long> jobsByDepartment = allJobs.stream()
+                .filter(j -> j.getDepartment() != null && !j.getDepartment().trim().isEmpty())
+                .collect(Collectors.groupingBy(Job::getDepartment, Collectors.counting()));
+
+        Map<String, Long> rolesCount = allUsers.stream()
+                .filter(u -> u.getRole() != null)
+                .collect(Collectors.groupingBy(u -> u.getRole().name(), Collectors.counting()));
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalUsers", totalUsers);
+        stats.put("activeUsers", activeUsers);
+        stats.put("inactiveUsers", inactiveUsers);
+        stats.put("totalJobs", totalJobs);
+        stats.put("openJobs", openJobs);
+        stats.put("closedJobs", closedJobs);
+        stats.put("totalCandidates", totalCandidates);
         stats.put("newCVsThisWeek", newCVsThisWeek);
+        stats.put("aiSuccessCount", aiSuccessCount);
+        stats.put("aiPendingCount", aiPendingCount);
+        stats.put("aiErrorCount", aiErrorCount);
+        stats.put("jobsByDepartment", jobsByDepartment);
+        stats.put("rolesCount", rolesCount);
 
         return stats;
     }

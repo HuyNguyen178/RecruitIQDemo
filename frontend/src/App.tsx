@@ -7,6 +7,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import Unauthorized from "./pages/auth/Unauthorized";
 import HRDashboard from "./pages/hr/Dashboard";
 import JobList from "./pages/hr/JobList";
@@ -20,7 +22,6 @@ import UserManagement from "./pages/admin/UserManagement";
 import Profile from "./pages/Profile";
 
 
-
 function App() {
   return (
     <BrowserRouter>
@@ -32,6 +33,8 @@ function App() {
         <Route path="/auth" element={<AuthLayout />}>
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
+          <Route path="forgot-password" element={<ForgotPassword />} />
+          <Route path="reset-password" element={<ResetPassword />} />
         </Route>
 
         {/* HR Routes */}

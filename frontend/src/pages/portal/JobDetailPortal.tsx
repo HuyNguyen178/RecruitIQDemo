@@ -5,7 +5,7 @@ import { type Job } from "../../services/jobService";
 import { Button } from "../../components/ui/Button";
 import { 
   ArrowLeft, Briefcase, Calendar, GraduationCap, Award, BookOpen, FileText,
-  DollarSign, Sparkles, CheckCircle2, ShieldAlert, Upload, MapPin
+  DollarSign, CheckCircle2, ShieldAlert, Upload, MapPin
 } from "lucide-react";
 
 export default function JobDetailPortal() {
@@ -20,8 +20,7 @@ export default function JobDetailPortal() {
   const [hasApplied, setHasApplied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Mock variable from parent context - dynamic evaluation fallback
-  const token = localStorage.getItem("token"); 
+  const isLoggedIn = !!localStorage.getItem("token");
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -32,7 +31,7 @@ export default function JobDetailPortal() {
       } catch (error: any) {
         console.error("Failed to load job detail", error);
         if (error.response?.status === 404) {
-          setErrorDetails("Error 404: Endpoint not found. Please restart your Spring Boot Backend to recognize the newly updated API!");
+          setErrorDetails("This job is not available. It may have been closed or removed.");
         } else if (error.response?.status === 403) {
           setErrorDetails("Error 403: Access Denied. Please check your account permissions.");
         } else {
@@ -61,12 +60,14 @@ export default function JobDetailPortal() {
   }, [id]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isLoggedIn) return;
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
     }
   };
 
   const handleDrag = (e: React.DragEvent) => {
+    if (!isLoggedIn) return;
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -77,6 +78,7 @@ export default function JobDetailPortal() {
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    if (!isLoggedIn) return;
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -92,7 +94,7 @@ export default function JobDetailPortal() {
     setUploading(true);
     try {
       await portalService.applyForJob(job.id, selectedFile);
-      alert("Application Submitted Successfully! AI is reviewing your CV.");
+      alert("Your application has been submitted successfully! The recruiter will be in touch with you shortly.");
       navigate("/portal/my-applications");
     } catch (error: any) {
       console.error("Failed to apply", error);
@@ -136,6 +138,8 @@ export default function JobDetailPortal() {
   }
 
   if (!job) return <div className="p-12 text-center text-red-500 font-medium">Job recruitment information not found.</div>;
+
+  const isClosed = job.status === 'CLOSED';
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto px-4 md:px-0 pb-12">
@@ -270,12 +274,17 @@ export default function JobDetailPortal() {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-6">
             
             <div className="border-b border-slate-100 pb-3.5 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
-              <h2 className="text-base font-bold text-slate-900">Quick Apply Node</h2>
+              <FileText className="w-4 h-4 text-[#00b14f]" />
+              <h2 className="text-base font-bold text-slate-900">Apply for this position</h2>
             </div>
 
             {hasApplied ? (
               <div className="text-center py-6 px-4 bg-[#f8fff9] rounded-xl border border-[#00b14f]/20 flex flex-col items-center justify-center space-y-4">
+                {isClosed && (
+                  <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 w-full">
+                    This position is closed. You can review the job details below, but new applications are no longer accepted.
+                  </p>
+                )}
                 <div className="p-3 bg-[#e6f7ec] text-[#00b14f] rounded-full shadow-inner">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
@@ -294,21 +303,37 @@ export default function JobDetailPortal() {
                   </Button>
                 </div>
               </div>
+            ) : isClosed ? (
+              <div className="text-center py-8 px-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <ShieldAlert className="w-8 h-8 text-slate-400 mx-auto" />
+                <h3 className="text-sm font-bold text-slate-900">Position Closed</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  This job is no longer accepting applications.
+                </p>
+                <Link
+                  to="/portal/jobs"
+                  className="inline-block text-xs font-bold text-[#00b14f] hover:underline"
+                >
+                  Browse open positions
+                </Link>
+              </div>
             ) : (
               <form onSubmit={handleApply} className="space-y-4">
                 {/* Drag and Drop File Upload Node Box Frame structure */}
                 <div 
-                  onDragEnter={handleDrag}
-                  onDragOver={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center min-h-[170px] ${
-                    dragActive 
-                      ? "border-[#00b14f] bg-[#f8fff9] scale-[1.01]" 
-                      : selectedFile 
-                        ? "border-[#00b14f]/40 bg-[#f8fff9]/20" 
-                        : "border-slate-300 hover:border-[#00b14f] hover:bg-slate-50/50"
+                  onDragEnter={isLoggedIn ? handleDrag : undefined}
+                  onDragOver={isLoggedIn ? handleDrag : undefined}
+                  onDragLeave={isLoggedIn ? handleDrag : undefined}
+                  onDrop={isLoggedIn ? handleDrop : undefined}
+                  onClick={isLoggedIn ? () => fileInputRef.current?.click() : undefined}
+                  className={`border-2 border-dashed rounded-xl p-5 text-center transition-all duration-200 flex flex-col items-center justify-center min-h-[170px] ${
+                    !isLoggedIn
+                      ? "border-slate-200 bg-slate-50/80 cursor-not-allowed opacity-80"
+                      : dragActive 
+                        ? "border-[#00b14f] bg-[#f8fff9] scale-[1.01] cursor-pointer" 
+                        : selectedFile 
+                          ? "border-[#00b14f]/40 bg-[#f8fff9]/20 cursor-pointer" 
+                          : "border-slate-300 hover:border-[#00b14f] hover:bg-slate-50/50 cursor-pointer"
                   }`}
                 >
                   <input 
@@ -316,10 +341,23 @@ export default function JobDetailPortal() {
                     ref={fileInputRef} 
                     onChange={handleFileChange}
                     accept=".pdf,.doc,.docx"
+                    disabled={!isLoggedIn}
                     className="hidden" 
                   />
                   
-                  {selectedFile ? (
+                  {!isLoggedIn ? (
+                    <div className="space-y-2">
+                      <div className="p-3 bg-slate-100 text-slate-400 rounded-full mx-auto w-fit border border-slate-200">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <p className="text-xs font-bold text-slate-600">
+                        Sign in to select a CV
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-medium px-2 leading-normal">
+                        You must sign in with a candidate account before uploading your application.
+                      </p>
+                    </div>
+                  ) : selectedFile ? (
                     <div className="space-y-2 w-full">
                       <div className="p-2.5 bg-[#e6f7ec] text-[#00b14f] rounded-full mx-auto w-fit">
                         <FileText className="w-6 h-6" />
@@ -346,22 +384,22 @@ export default function JobDetailPortal() {
                   )}
                 </div>
 
-                {/* Cyber Security Information Tag Hint bar */}
+                {/* Info hint bar */}
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-[#00b14f] shrink-0 mt-0.5" />
                   <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
-                    Data pipelines are secured securely. Automated AI metrics analysis evaluates compliance parsing matrices live upon drop submissions.
+                    Your CV will be submitted directly to the hiring team. Only PDF, DOC, and DOCX files are accepted.
                   </p>
                 </div>
 
                 {/* Submitting Operations Triggers Actions Bar */}
-                {!token ? (
+                {!isLoggedIn ? (
                   <Button 
                     type="button"
                     onClick={() => navigate('/auth/login')}
                     className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs h-11 rounded-lg shadow-none transition-colors flex items-center justify-center gap-2"
                   >
-                    Login to Submit Application
+                    Sign in to apply
                   </Button>
                 ) : (
                   <Button 

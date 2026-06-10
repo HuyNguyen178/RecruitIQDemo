@@ -17,6 +17,8 @@ public class JobResponse {
     private String title;
     private String department;
     private String location;
+    private Long cityId;
+    private String cityName;
     private String jdText;
     private String requiredSkills;
     private Integer minExperienceYears;
@@ -24,6 +26,7 @@ public class JobResponse {
     private LocalDate deadline;
     private String status;
     private String createdByName;
+    private String createdByEmail;
     private LocalDateTime createdAt;
     private int candidateCount;
     private String logoUrl;

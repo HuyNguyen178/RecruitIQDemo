@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import { Brain, Sparkles, CheckCircle2, ChevronRight } from "lucide-react";
+import { Brain, CheckCircle2, ChevronRight } from "lucide-react";
 
 export default function AuthLayout() {
   return (
@@ -26,16 +26,12 @@ export default function AuthLayout() {
 
         {/* Middle hero contents */}
         <div className="my-auto space-y-8 relative z-10 max-w-lg">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-bounce" /> Powered by Artificial Intelligence
-          </div>
-          
           <h2 className="text-4xl font-extrabold tracking-tight leading-[1.15] text-white">
-            <span className="bg-gradient-to-r from-[#00b14f] to-emerald-400 bg-clip-text text-transparent">Breakthrough</span> Recruitment & CV Assessment Platform
+            Modern Recruitment & <span className="bg-gradient-to-r from-[#00b14f] to-emerald-400 bg-clip-text text-transparent">Hiring Platform</span>
           </h2>
           
           <p className="text-slate-400 text-sm leading-relaxed font-semibold">
-            Leverage the power of advanced large language models to automatically scan skills, evaluate experience, and recommend ideal jobs in seconds.
+            A streamlined platform for managing job postings, reviewing candidates, and making faster, smarter hiring decisions.
           </p>
 
           {/* Highlights checklist */}
@@ -44,19 +40,19 @@ export default function AuthLayout() {
               <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-4 h-4 text-[#00b14f]" />
               </div>
-              <span className="text-xs font-bold text-slate-200">Accurate automatic CV evaluation and scoring</span>
+              <span className="text-xs font-bold text-slate-200">Post jobs and manage applications in one place</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-4 h-4 text-[#00b14f]" />
               </div>
-              <span className="text-xs font-bold text-slate-200">Fast and modern search experience</span>
+              <span className="text-xs font-bold text-slate-200">Fast and modern candidate search experience</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-4 h-4 text-[#00b14f]" />
               </div>
-              <span className="text-xs font-bold text-slate-200">Smart analysis system for employers</span>
+              <span className="text-xs font-bold text-slate-200">Streamlined collaboration between HR and hiring managers</span>
             </div>
           </div>
         </div>

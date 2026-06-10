@@ -2,7 +2,6 @@ package com.recruitiq.mapper;
 
 import com.recruitiq.dto.UserRequest;
 import com.recruitiq.dto.UserResponse;
-
 import com.recruitiq.model.User;
 import org.springframework.stereotype.Component;
 

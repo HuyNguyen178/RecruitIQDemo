@@ -101,6 +101,22 @@ export default function UserManagement() {
     }
     
     setFormError("");
+
+    if (modalMode === 'create') {
+      if (!formData.name?.trim()) {
+        setFormError('Name is required.');
+        return;
+      }
+      if (!formData.email?.trim()) {
+        setFormError('Email is required.');
+        return;
+      }
+      if (!formData.password || formData.password.length < 6) {
+        setFormError('Password must be at least 6 characters.');
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {

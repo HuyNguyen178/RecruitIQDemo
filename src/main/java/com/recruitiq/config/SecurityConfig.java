@@ -5,6 +5,7 @@ import com.recruitiq.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -19,7 +20,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.http.HttpMethod;
 
 import java.util.Arrays;
 
@@ -71,6 +71,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // Allow guests to browse job listings without logging in
                         .requestMatchers(HttpMethod.GET, "/api/portal/jobs", "/api/portal/jobs/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/cities").permitAll()
                         .requestMatchers("/api/portal/**").hasAnyRole("CANDIDATE", "HR_OFFICER", "ADMIN")
                         .anyRequest().authenticated()
                 )

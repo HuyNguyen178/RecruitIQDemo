@@ -1,13 +1,28 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { jobService, type Job } from "../../services/jobService";
+import { cityService, type City } from "../../services/cityService";
 import { Button } from "../../components/ui/Button";
 import { ImageUpload } from "../../components/ui/ImageUpload";
 import { Input } from "../../components/ui/Input";
-import { Plus, Search, Eye, Pencil, Trash2, X, Briefcase, MapPin, Building, Calendar, GraduationCap, Award, Users } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2, X, Briefcase, MapPin, Building, Calendar, GraduationCap, Award, Users, UserCircle } from "lucide-react";
+import { validateJobForm } from "../../utils/jobFormValidation";
+
+function formatDateTime(value?: string) {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  } catch {
+    return value;
+  }
+}
 
 export default function JobList() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -20,7 +35,7 @@ export default function JobList() {
   const [formData, setFormData] = useState({
     title: "",
     department: "",
-    location: "",
+    cityId: '' as number | '',
     jdText: "",
     requiredSkills: "",
     logoUrl: "",
@@ -36,9 +51,40 @@ export default function JobList() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
   const prefix = isAdmin ? "/admin" : "/hr";
+  const today = new Date().toISOString().split('T')[0];
+
+  const resolveCityId = (job: Job): number | '' => {
+    if (job.cityId) return job.cityId;
+    const match = cities.find(
+      (c) => c.name.toLowerCase() === (job.location || job.cityName || '').toLowerCase()
+    );
+    return match?.id ?? '';
+  };
+
+  const buildJobPayload = () => {
+    const { cityId, status, ...rest } = formData;
+    return {
+      ...rest,
+      cityId: Number(cityId),
+      status,
+    };
+  };
 
   useEffect(() => {
-    fetchJobs();
+    void (async () => {
+      try {
+        const [jobsData, citiesData] = await Promise.all([
+          jobService.getAllJobs(),
+          cityService.getActiveCities(),
+        ]);
+        setJobs(jobsData);
+        setCities(citiesData);
+      } catch (error) {
+        console.error("Failed to load jobs or cities", error);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   const fetchJobs = async () => {
@@ -87,7 +133,7 @@ export default function JobList() {
     setFormData({
       title: "",
       department: "",
-      location: "",
+      cityId: '' as number | '',
       jdText: "",
       requiredSkills: "",
       logoUrl: "",
@@ -108,7 +154,7 @@ export default function JobList() {
     setFormData({
       title: job.title || "",
       department: job.department || "",
-      location: job.location || "",
+      cityId: resolveCityId(job),
       jdText: job.jdText || "",
       requiredSkills: job.requiredSkills || "",
       logoUrl: job.logoUrl || "",
@@ -138,13 +184,21 @@ export default function JobList() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
+
+    const validationError = validateJobForm(formData, modalMode);
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
+      const payload = buildJobPayload();
       if (modalMode === 'create') {
-        await jobService.createJob(formData);
+        await jobService.createJob(payload as Job);
       } else if (modalMode === 'edit' && selectedJobId) {
-        await jobService.updateJob(selectedJobId, formData);
+        await jobService.updateJob(selectedJobId, payload as Job);
       }
       setShowModal(false);
       await fetchJobs(); // Refresh list
@@ -163,7 +217,10 @@ export default function JobList() {
   const filteredJobs = jobs.filter(job => 
     job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     job.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.location?.toLowerCase().includes(searchTerm.toLowerCase())
+    job.cityName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.createdByName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.createdByEmail?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -188,7 +245,7 @@ export default function JobList() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search jobs by title, department..." 
+              placeholder="Search by title, department, creator..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-fuchsia-500"
@@ -201,6 +258,7 @@ export default function JobList() {
               <tr>
                 <th scope="col" className="px-6 py-3">Job Details</th>
                 <th scope="col" className="px-6 py-3">Requirements</th>
+                <th scope="col" className="px-6 py-3">Created by</th>
                 <th scope="col" className="px-6 py-3">Deadline</th>
                 <th scope="col" className="px-6 py-3">Applicants</th>
                 <th scope="col" className="px-6 py-3">Status</th>
@@ -210,11 +268,11 @@ export default function JobList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center">Loading jobs...</td>
+                  <td colSpan={7} className="px-6 py-8 text-center">Loading jobs...</td>
                 </tr>
               ) : filteredJobs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
                     No jobs found matching your search.
                   </td>
                 </tr>
@@ -237,7 +295,7 @@ export default function JobList() {
                             {job.department}
                             <span className="text-slate-300">•</span>
                             <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                            {job.location}
+                            {job.cityName || job.location}
                           </div>
                         </div>
                       </div>
@@ -250,6 +308,22 @@ export default function JobList() {
                       </div>
                       <div className="text-xs text-slate-500 font-medium">
                         {job.requiredEducation || 'No edu req'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-start gap-2">
+                        <UserCircle className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-800 truncate">
+                            {job.createdByName || 'Unknown'}
+                          </div>
+                          {job.createdByEmail && (
+                            <div className="text-xs text-slate-500 truncate">{job.createdByEmail}</div>
+                          )}
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            {formatDateTime(job.createdAt)}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -361,18 +435,29 @@ export default function JobList() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5" htmlFor="job-location">
+                  <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5" htmlFor="job-city">
                     <MapPin className="w-4 h-4 text-slate-400" />
-                    Location
+                    City
                   </label>
-                  <Input 
-                    id="job-location"
-                    placeholder="e.g. Hanoi, Vietnam (Hybrid)"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="text-slate-900"
+                  <select
+                    id="job-city"
+                    value={formData.cityId}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        cityId: e.target.value ? Number(e.target.value) : '',
+                      })
+                    }
+                    className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 focus-visible:ring-offset-2"
                     required
-                  />
+                  >
+                    <option value="">Select a city</option>
+                    {cities.map((city) => (
+                      <option key={city.id} value={city.id}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-2">
@@ -401,8 +486,9 @@ export default function JobList() {
                     id="job-experience"
                     type="number"
                     min={0}
+                    max={60}
                     value={formData.minExperienceYears}
-                    onChange={(e) => setFormData({ ...formData, minExperienceYears: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, minExperienceYears: Math.max(0, parseInt(e.target.value) || 0) })}
                     className="text-slate-900"
                     required
                   />
@@ -434,6 +520,7 @@ export default function JobList() {
                   <Input 
                     id="job-deadline"
                     type="date"
+                    min={modalMode === 'create' ? today : undefined}
                     value={formData.deadline}
                     onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                     className="text-slate-900"

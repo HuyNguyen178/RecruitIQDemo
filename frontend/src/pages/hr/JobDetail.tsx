@@ -6,8 +6,20 @@ import { Button } from "../../components/ui/Button";
 import { 
   ArrowLeft, Upload, Download, Trash2, Users, FileText, 
   Calendar, GraduationCap, Award, Eye, Phone, Mail, 
-  BookOpen, Heart, X, Briefcase
+  BookOpen, Heart, X, Briefcase, UserCircle
 } from "lucide-react";
+
+function formatDateTime(value?: string) {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  } catch {
+    return value;
+  }
+}
 
 export default function JobDetail() {
   const { id } = useParams();
@@ -168,6 +180,17 @@ export default function JobDetail() {
                   {job.status || 'OPEN'}
                 </span>
               </p>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider flex items-center gap-1.5">
+                <UserCircle className="w-4 h-4 text-slate-400" />
+                Created by
+              </span>
+              <p className="font-semibold text-sm text-slate-800 mt-1">{job.createdByName || 'Unknown'}</p>
+              {job.createdByEmail && (
+                <p className="text-xs text-slate-500 mt-0.5">{job.createdByEmail}</p>
+              )}
+              <p className="text-xs text-slate-400 mt-1">{formatDateTime(job.createdAt)}</p>
             </div>
             <div>
               <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider flex items-center gap-1.5">

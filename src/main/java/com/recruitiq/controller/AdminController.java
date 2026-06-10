@@ -4,16 +4,17 @@ import com.recruitiq.dto.UserRequest;
 import com.recruitiq.dto.UserResponse;
 import com.recruitiq.service.CandidateService;
 import com.recruitiq.service.UserService;
+import com.recruitiq.validation.ValidationGroups;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @RestController
@@ -32,7 +33,8 @@ public class AdminController {
     }
 
     @PostMapping("/users")
-    public ResponseEntity<UserResponse> createUser(@RequestBody @Valid UserRequest request) {
+    public ResponseEntity<UserResponse> createUser(
+            @RequestBody @Validated(ValidationGroups.CreateUser.class) UserRequest request) {
         UserResponse response = userService.createUser(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }

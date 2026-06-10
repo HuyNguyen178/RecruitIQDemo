@@ -1,8 +1,8 @@
 package com.recruitiq.controller;
 
 import com.recruitiq.dto.CandidateResponse;
-import com.recruitiq.dto.JobResponse;
 import com.recruitiq.dto.FileDownloadDto;
+import com.recruitiq.dto.JobResponse;
 import com.recruitiq.service.CandidateService;
 import com.recruitiq.service.JobService;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +39,11 @@ public class CandidatePortalController {
     }
 
     @GetMapping("/jobs/{id}")
-    public ResponseEntity<JobResponse> getJobDetailForCandidate(@PathVariable Long id) {
-        return ResponseEntity.ok(jobService.getJobById(id));
+    public ResponseEntity<JobResponse> getJobDetailForCandidate(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = userDetails != null ? userDetails.getUsername() : null;
+        return ResponseEntity.ok(jobService.getJobByIdForCandidate(id, email));
     }
 
     // 2. Nộp CV trực tiếp
