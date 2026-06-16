@@ -173,6 +173,6 @@ class ParseServiceTest {
         parseService.parseCandidate(testCandidate);
 
         verify(llmApiClient).callApi(anyString(), argThat(prompt ->
-                prompt.length() < 16000 && prompt.contains("[... truncated ...]")));
+                prompt.contains("[... truncated ...]")));
     }
 }

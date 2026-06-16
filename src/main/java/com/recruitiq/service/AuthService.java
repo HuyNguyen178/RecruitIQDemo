@@ -87,13 +87,6 @@ public class AuthService {
         }
 
         User.Role userRole = User.Role.CANDIDATE;
-        if (request.getRole() != null) {
-            try {
-                userRole = User.Role.valueOf(request.getRole().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                // Ignore and use default
-            }
-        }
 
         String otpCode = String.format("%06d", new java.util.Random().nextInt(1000000));
 

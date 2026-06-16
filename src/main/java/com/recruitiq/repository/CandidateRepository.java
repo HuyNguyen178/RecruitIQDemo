@@ -42,6 +42,4 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
 
     @Query("SELECT c FROM Candidate c LEFT JOIN FETCH c.job WHERE c.id = :id")
     java.util.Optional<Candidate> findByIdWithJob(@Param("id") Long id);
-
-    long countByJobId(Long jobId);
 }

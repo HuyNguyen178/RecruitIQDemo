@@ -165,18 +165,15 @@ class JobServiceTest {
 
     @Test
     void deleteJob_WhenJobHasCandidates_ShouldThrowException() {
-        // Giả lập job đã có ứng viên (logic check trong service)
-        // testJob.getCandidates().add(new Candidate());
-        // Tùy vào cách bạn implement hàm deleteJob, nếu nó check size() > 0
-
+        testJob.setCandidates(List.of(new com.recruitiq.model.Candidate()));
         when(jobRepository.findById(1L)).thenReturn(Optional.of(testJob));
-        // Nếu trong service bạn ném IllegalStateException khi có candidate:
-        // assertThrows(IllegalStateException.class, () -> jobService.deleteJob(1L));
+        
+        assertThrows(IllegalStateException.class, () -> jobService.deleteJob(1L));
     }
 
     @Test
     void anyMethod_WhenNotFound_ShouldThrowEntityNotFoundException() {
-        when(jobRepository.findById(99L)).thenReturn(Optional.empty());
+        when(jobRepository.findByIdWithCreatedBy(99L)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> jobService.getJobById(99L));
     }

@@ -9,7 +9,6 @@ import com.recruitiq.model.User;
 import com.recruitiq.repository.CityRepository;
 import com.recruitiq.repository.CandidateRepository;
 import com.recruitiq.repository.JobRepository;
-import com.recruitiq.validation.JobInputValidator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +31,7 @@ public class JobService {
 
     @Transactional
     public JobResponse createJob(JobRequest request, User createdBy) {
-        JobInputValidator.validate(request, true);
+        // Validation handled by @Valid annotation in controller and DTO annotations
         City city = resolveCity(request.getCityId());
         Job job = jobMapper.toEntity(request, createdBy, city);
         Job savedJob = jobRepository.save(job);
@@ -41,7 +40,7 @@ public class JobService {
 
     @Transactional
     public JobResponse updateJob(Long jobId, JobRequest request) {
-        JobInputValidator.validate(request, false);
+        // Validation handled by @Valid annotation in controller and DTO annotations
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found: " + jobId));
         City city = resolveCity(request.getCityId());

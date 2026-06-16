@@ -20,7 +20,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.context.ApplicationEventPublisher;
+import com.recruitiq.event.CandidateUploadedEvent;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,6 +44,7 @@ public class CandidateService {
     private final JobRepository jobRepository;
     private final JobService jobService;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public List<CandidateResponse> uploadCvFiles(Long jobId, List<MultipartFile> files, User uploadedBy) {
@@ -102,10 +106,10 @@ public class CandidateService {
             }
         }
 
-        // Kích hoạt xử lý AI bất đồng bộ
+        // Kích hoạt xử lý AI bất đồng bộ qua Event Listener
         candidates.stream()
                 .filter(c -> c.getProcessingStatus() == Candidate.ProcessingStatus.PENDING)
-                .forEach(c -> aiProcessingService.processCandidate(c.getId()));
+                .forEach(c -> eventPublisher.publishEvent(new CandidateUploadedEvent(c.getId())));
 
         return candidates.stream()
                 .map(candidateMapper::toResponse)
@@ -209,7 +213,13 @@ public class CandidateService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         // 3. Lưu file vật lý và trích xuất văn bản
-        String filePath = fileProcessingService.storeFile(file);
+        String filePath;
+        try {
+         filePath = fileProcessingService.saveUploadedFile(file, jobId);
+        } catch (IOException e) {
+            throw new RuntimeException("Error when save CV", e);
+        }
+
         String rawText;
         try {
             rawText = fileProcessingService.extractTextFromFile(file);
@@ -236,6 +246,8 @@ public class CandidateService {
                 .decisionStatus(Shortlist.DecisionStatus.PENDING)
                 .build();
         shortlistRepository.save(shortlist);
+
+        eventPublisher.publishEvent(new CandidateUploadedEvent(saved.getId()));
 
         return candidateMapper.toResponse(saved);
     }

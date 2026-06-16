@@ -4,14 +4,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-import reactor.util.retry.Retry;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -20,7 +21,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class LlmApiClient {
 
-    private final WebClient webClient;
+    private final RestTemplate restTemplate;
 
     @Value("${llm.api.key}")
     private String apiKey;
@@ -31,13 +32,10 @@ public class LlmApiClient {
     @Value("${llm.api.model}")
     private String model;
 
-    @Value("${llm.api.enabled:false}")
-    private boolean llmApiEnabled;
-
     @SuppressWarnings("unchecked")
     public String callApi(String systemPrompt, String userPrompt) {
-        if (!llmApiEnabled || !StringUtils.hasText(apiKey)) {
-            log.info("Gemini API is disabled or not configured. Returning mock response.");
+        if (!StringUtils.hasText(apiKey)) {
+            log.warn("Gemini API key is not configured. Returning mock response.");
             return getMockResponse(userPrompt);
         }
 
@@ -50,21 +48,35 @@ public class LlmApiClient {
             }
 
             try {
+                log.info("Calling Gemini API with model: {}", currentModel);
                 return callGemini(currentModel, systemPrompt, userPrompt);
-            } catch (WebClientResponseException.Forbidden | WebClientResponseException.Unauthorized e) {
-                log.warn("Gemini API rejected the request for model {} ({}). Trying fallback model if available.", currentModel, e.getStatusCode());
+            } catch (HttpClientErrorException e) {
+                if (e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.FORBIDDEN) {
+                    log.error("Gemini API key is invalid or forbidden for model {} ({}). Please check your API key.", currentModel, e.getStatusCode());
+                    throw new RuntimeException("Gemini API authentication failed (" + e.getStatusCode() + "): API key is invalid or forbidden. Please update llm.api.key in application.properties.", e);
+                }
+                log.warn("Gemini API request failed for model {} ({}). Trying next model if available.", currentModel, e.getStatusCode());
                 lastError = new RuntimeException("Gemini API call failed: " + e.getMessage(), e);
-            } catch (WebClientResponseException e) {
-                log.warn("Gemini API request failed for model {} ({}). Falling back to mock response.", currentModel, e.getStatusCode());
+            } catch (HttpServerErrorException e) {
+                if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
+                    log.warn("Too many requests to Gemini API. Waiting before retry...");
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                log.warn("Gemini API server error for model {} ({}). Trying next model if available.", currentModel, e.getStatusCode());
                 lastError = new RuntimeException("Gemini API call failed: " + e.getMessage(), e);
             } catch (Exception e) {
-                log.warn("Gemini API call failed for model {}. Falling back to mock response.", currentModel, e);
+                log.warn("Gemini API call failed for model {}. Trying next model if available.", currentModel, e);
                 lastError = new RuntimeException("Gemini API call failed: " + e.getMessage(), e);
             }
         }
 
         if (lastError != null) {
-            log.warn("All Gemini attempts failed. Returning mock response.");
+            log.error("All Gemini model attempts failed. Last error: {}", lastError.getMessage());
+            throw lastError;
         }
         return getMockResponse(userPrompt);
     }
@@ -86,17 +98,17 @@ public class LlmApiClient {
         String finalUrl = apiUrl.replace("{model}", currentModel);
         log.debug("Calling Gemini API with model: {}", currentModel);
 
-        Map<String, Object> response = webClient.post()
-                .uri(finalUrl + "?key=" + apiKey)
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .bodyValue(requestBody)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .retryWhen(Retry.backoff(2, Duration.ofSeconds(2))
-                        .filter(throwable -> throwable instanceof WebClientResponseException.TooManyRequests)
-                        .onRetryExhaustedThrow((retryBackoffSpec, retrySignal) -> retrySignal.failure()))
-                .timeout(Duration.ofSeconds(60))
-                .block();
+        // Prepare headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+        Map<String, Object> response = restTemplate.postForObject(
+                finalUrl + "?key=" + apiKey,
+                entity,
+                Map.class
+        );
 
         if (response == null) {
             throw new RuntimeException("Empty response from Gemini API");

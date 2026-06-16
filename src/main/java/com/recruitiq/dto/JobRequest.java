@@ -2,6 +2,7 @@ package com.recruitiq.dto;
 
 import com.recruitiq.model.Job;
 import com.recruitiq.validation.ValidSalary;
+import com.recruitiq.validation.FutureDeadline;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -43,6 +44,7 @@ public class JobRequest {
 
     @NotNull(message = "Application deadline is required")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    @FutureDeadline
     private LocalDate deadline;
 
     private String logoUrl;

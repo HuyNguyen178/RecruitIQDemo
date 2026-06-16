@@ -1,0 +1,4 @@
+com\recruitiq\service\ParseServiceTest.class
+com\recruitiq\service\ImageStorageServiceTest.class
+com\recruitiq\service\JobServiceTest.class
+com\recruitiq\service\ScoreServiceTest.class

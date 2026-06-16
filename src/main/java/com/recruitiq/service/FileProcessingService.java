@@ -122,21 +122,4 @@ public class FileProcessingService {
             log.error("Failed to delete file at {}: {}", filePath, e.getMessage());
         }
     }
-
-    public String storeFile(MultipartFile file) {
-        try {
-            validateFile(file);
-
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
-
-            String fileName = UUID.randomUUID().toString() + getExtension(file.getOriginalFilename());
-            Path filePath = uploadPath.resolve(fileName);
-
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            return filePath.toString();
-        } catch (IOException e) {
-            throw new RuntimeException("Error when save CV", e);
-        }
-    }
 }

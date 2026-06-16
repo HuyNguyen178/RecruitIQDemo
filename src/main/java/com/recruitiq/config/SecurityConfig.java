@@ -3,6 +3,7 @@ package com.recruitiq.config;
 import com.recruitiq.security.CustomUserDetailsService;
 import com.recruitiq.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -31,6 +33,9 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:5174}")
+    private String allowedOrigins;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -68,9 +73,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/uploads/**").authenticated()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        // Allow guests to browse job listings without logging in
                         .requestMatchers(HttpMethod.GET, "/api/portal/jobs", "/api/portal/jobs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cities").permitAll()
                         .requestMatchers("/api/portal/**").hasAnyRole("CANDIDATE", "HR_OFFICER", "ADMIN")
@@ -86,11 +90,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Cho phép nguồn từ Vite (cả 5173 và 5174)
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:5174"));
-        // Cần có OPTIONS trong danh sách này
+        // Parse allowed origins from application.properties
+        List<String> origins = Arrays.asList(allowedOrigins.split(","));
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        // Cho phép các header tùy chỉnh và Header Authorization chứa JWT Token
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cache-Control"));
         configuration.setAllowCredentials(true);
 

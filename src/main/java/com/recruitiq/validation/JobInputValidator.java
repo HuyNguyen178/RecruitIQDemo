@@ -1,10 +1,14 @@
 package com.recruitiq.validation;
 
-import com.recruitiq.dto.JobRequest;
-
-import java.time.LocalDate;
 import java.util.regex.Pattern;
 
+/**
+ * Utility validator for complex salary format validation.
+ * Used by @ValidSalary annotation to validate salary ranges and formats.
+ * 
+ * NOTE: Experience years and deadline validation moved to DTO annotations (@Min, @Max, @FutureDeadline)
+ * to follow DRY principle and avoid redundant service-level validation.
+ */
 public final class JobInputValidator {
 
     private static final Pattern EXPLICIT_NEGATIVE = Pattern.compile("(^|\\s)-\\d");
@@ -12,21 +16,13 @@ public final class JobInputValidator {
     private JobInputValidator() {
     }
 
-    public static void validate(JobRequest request, boolean isCreate) {
-        if (request.getMinExperienceYears() != null && request.getMinExperienceYears() < 0) {
-            throw new IllegalArgumentException("Minimum experience years cannot be negative.");
-        }
-        if (request.getMinExperienceYears() != null && request.getMinExperienceYears() > 60) {
-            throw new IllegalArgumentException("Minimum experience years cannot exceed 60.");
-        }
-        validateSalary(request.getSalary());
-        if (isCreate
-                && request.getDeadline() != null
-                && request.getDeadline().isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Application deadline cannot be in the past.");
-        }
-    }
-
+    /**
+     * Validates salary format and values.
+     * Supports:
+     * - Single amounts: "100", "100,000", "100,000.50"
+     * - Ranges: "100-200", "100,000-150,000.50"
+     * Rejects negative values and invalid formats.
+     */
     public static void validateSalary(String salary) {
         if (salary == null || salary.isBlank()) {
             return;
