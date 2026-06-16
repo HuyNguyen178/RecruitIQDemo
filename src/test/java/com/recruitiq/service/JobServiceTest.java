@@ -3,8 +3,11 @@ package com.recruitiq.service;
 import com.recruitiq.dto.JobRequest;
 import com.recruitiq.dto.JobResponse;
 import com.recruitiq.mapper.JobMapper;
+import com.recruitiq.model.City;
 import com.recruitiq.model.Job;
 import com.recruitiq.model.User;
+import com.recruitiq.repository.CandidateRepository;
+import com.recruitiq.repository.CityRepository;
 import com.recruitiq.repository.JobRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +23,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,6 +31,12 @@ class JobServiceTest {
 
     @Mock
     private JobRepository jobRepository;
+
+    @Mock
+    private CityRepository cityRepository;
+
+    @Mock
+    private CandidateRepository candidateRepository;
 
     @Mock
     private JobMapper jobMapper;
@@ -49,7 +59,12 @@ class JobServiceTest {
 
         jobRequest = new JobRequest();
         jobRequest.setTitle("Software Engineer");
-        // ... set các fields khác cho request
+        jobRequest.setDepartment("Engineering");
+        jobRequest.setCityId(1L);
+        jobRequest.setJdText("Job description");
+        jobRequest.setRequiredEducation(Job.EducationLevel.BACHELOR);
+        jobRequest.setDeadline(LocalDate.now().plusDays(30));
+        jobRequest.setMinExperienceYears(1);
 
         testJob = Job.builder()
                 .id(1L)
@@ -68,6 +83,9 @@ class JobServiceTest {
     @Test
     void createJob_ShouldReturnJobResponse() {
         // Arrange
+        City city = City.builder().id(1L).name("Hanoi").active(true).build();
+        when(cityRepository.findByIdAndActiveTrue(1L)).thenReturn(Optional.of(city));
+        when(jobMapper.toEntity(any(), any(), any())).thenReturn(testJob);
         when(jobRepository.save(any(Job.class))).thenReturn(testJob);
         when(jobMapper.toResponse(any(Job.class))).thenReturn(jobResponse);
 
@@ -84,7 +102,7 @@ class JobServiceTest {
     @Test
     void getJobResponseById_WhenFound_ShouldReturnResponse() {
         // Arrange
-        when(jobRepository.findById(1L)).thenReturn(Optional.of(testJob));
+        when(jobRepository.findByIdWithCreatedBy(1L)).thenReturn(Optional.of(testJob));
         when(jobMapper.toResponse(testJob)).thenReturn(jobResponse);
 
         // Act
@@ -98,8 +116,10 @@ class JobServiceTest {
     @Test
     void updateJob_ShouldUpdateAndReturnResponse() {
         // Arrange
+        City city = City.builder().id(1L).name("Hanoi").active(true).build();
+        when(cityRepository.findByIdAndActiveTrue(1L)).thenReturn(Optional.of(city));
         when(jobRepository.findById(1L)).thenReturn(Optional.of(testJob));
-        doNothing().when(jobMapper).updateEntityFromRequest(any(), any());
+        doNothing().when(jobMapper).updateEntityFromRequest(any(), any(), any());
         when(jobRepository.save(any())).thenReturn(testJob);
         when(jobMapper.toResponse(any())).thenReturn(jobResponse);
 
@@ -108,7 +128,7 @@ class JobServiceTest {
 
         // Assert
         assertNotNull(result);
-        verify(jobMapper).updateEntityFromRequest(eq(jobRequest), eq(testJob));
+        verify(jobMapper).updateEntityFromRequest(eq(jobRequest), eq(testJob), any());
         verify(jobRepository).save(testJob);
     }
 
@@ -132,7 +152,7 @@ class JobServiceTest {
     void getJobsByUser_AdminShouldSeeAll() {
         // Arrange
         User admin = User.builder().role(User.Role.ADMIN).build();
-        when(jobRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(testJob));
+        when(jobRepository.findAllWithCreatedByOrderByCreatedAtDesc()).thenReturn(List.of(testJob));
         when(jobMapper.toResponse(testJob)).thenReturn(jobResponse);
 
         // Act
@@ -140,7 +160,7 @@ class JobServiceTest {
 
         // Assert
         assertEquals(1, results.size());
-        verify(jobRepository).findAllByOrderByCreatedAtDesc();
+        verify(jobRepository).findAllWithCreatedByOrderByCreatedAtDesc();
     }
 
     @Test
@@ -159,5 +179,60 @@ class JobServiceTest {
         when(jobRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> jobService.getJobById(99L));
+    }
+
+    @Test
+    void closeExpiredJobs_ShouldCloseOpenJobsPastDeadline() {
+        Job expiredJob = Job.builder()
+                .id(2L)
+                .title("Expired Role")
+                .status(Job.JobStatus.OPEN)
+                .deadline(LocalDate.now().minusDays(1))
+                .build();
+
+        when(jobRepository.findByStatusAndDeadlineBefore(eq(Job.JobStatus.OPEN), any(LocalDate.class)))
+                .thenReturn(List.of(expiredJob));
+        when(jobRepository.saveAll(any())).thenReturn(List.of(expiredJob));
+
+        int closed = jobService.closeExpiredJobs();
+
+        assertEquals(1, closed);
+        assertEquals(Job.JobStatus.CLOSED, expiredJob.getStatus());
+        verify(jobRepository).saveAll(any());
+    }
+
+    @Test
+    void getJobByIdForCandidate_WhenPastDeadlineAndNoApplication_ShouldThrowNotFound() {
+        Job expiredJob = Job.builder()
+                .id(1L)
+                .title("Expired Role")
+                .status(Job.JobStatus.OPEN)
+                .deadline(LocalDate.now().minusDays(1))
+                .build();
+
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(expiredJob));
+        when(jobRepository.save(expiredJob)).thenReturn(expiredJob);
+
+        assertThrows(EntityNotFoundException.class, () -> jobService.getJobByIdForCandidate(1L, null));
+        assertEquals(Job.JobStatus.CLOSED, expiredJob.getStatus());
+    }
+
+    @Test
+    void getJobByIdForCandidate_WhenClosedButCandidateApplied_ShouldReturnJob() {
+        Job closedJob = Job.builder()
+                .id(1L)
+                .title("Closed Role")
+                .status(Job.JobStatus.CLOSED)
+                .deadline(LocalDate.now().minusDays(1))
+                .build();
+
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(closedJob));
+        when(candidateRepository.existsByJobIdAndUserEmail(1L, "candidate@test.com")).thenReturn(true);
+        when(jobMapper.toResponse(closedJob)).thenReturn(jobResponse);
+
+        JobResponse result = jobService.getJobByIdForCandidate(1L, "candidate@test.com");
+
+        assertNotNull(result);
+        verify(jobMapper).toResponse(closedJob);
     }
 }

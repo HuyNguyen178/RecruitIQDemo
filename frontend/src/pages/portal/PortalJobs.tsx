@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { portalService } from "../../services/portalService";
 import { type Job } from "../../services/jobService";
 import { cityService, type City } from "../../services/cityService";

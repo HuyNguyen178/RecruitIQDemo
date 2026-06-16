@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { profileService, type ProfileData } from '../services/profileService';
+import { fileService } from '../services/fileService';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import {
@@ -141,6 +142,7 @@ export default function Profile() {
   const [draftName, setDraftName] = useState('');
   const [draftEmail, setDraftEmail] = useState('');
   const [draftAvatar, setDraftAvatar] = useState<string | null>(null);
+  const [draftAvatarFile, setDraftAvatarFile] = useState<File | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -180,6 +182,7 @@ export default function Profile() {
     setVerifyPassword('');
     setNewPassword('');
     setConfirmPassword('');
+    setDraftAvatarFile(null);
   };
 
   const openEdit = (field: EditField) => {
@@ -191,12 +194,17 @@ export default function Profile() {
     setDraftName(profile.name || '');
     setDraftEmail(profile.email || '');
     setDraftAvatar(profile.avatarUrl || null);
+    setDraftAvatarFile(null);
     setEditingField(field);
   };
 
   const handleAvatarFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
-    if (!file) return;
+    if (!file) {
+      setDraftAvatarFile(null);
+      setDraftAvatar(null);
+      return;
+    }
 
     if (!file.type.startsWith('image/')) {
       setModalError('Please select a valid image file (PNG, JPG, JPEG, or GIF).');
@@ -210,6 +218,7 @@ export default function Profile() {
     }
 
     try {
+      setDraftAvatarFile(file);
       setDraftAvatar(await readFileAsDataUrl(file));
       setModalError('');
     } catch {
@@ -297,12 +306,18 @@ export default function Profile() {
 
     if (editingField === 'avatar') {
       const current = profile.avatarUrl || null;
-      if (draftAvatar === current) {
+      if (draftAvatar === current && !draftAvatarFile) {
         setModalError('Choose a new photo or remove the current one.');
         return;
       }
+
+      let avatarUrl = draftAvatar || '';
+      if (draftAvatarFile) {
+        avatarUrl = await fileService.uploadImage(draftAvatarFile);
+      }
+
       await applyUpdate(
-        { avatarUrl: draftAvatar || '', currentPassword: password },
+        { avatarUrl, currentPassword: password },
         { successMessage: 'Profile photo updated successfully.' }
       );
       return;

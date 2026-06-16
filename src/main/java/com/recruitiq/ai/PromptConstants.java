@@ -5,98 +5,335 @@ public final class PromptConstants {
     private PromptConstants() {}
 
     public static final String PARSE_SYSTEM_PROMPT =
-            "You are an expert CV/resume parser. Your task is to extract structured information from resumes and CVs. " +
-                    "Always respond with valid JSON only. Do not include any explanatory text outside the JSON structure. " +
-                    "If a field is not found, use null or an empty array as appropriate. " +
-                    "Normalize education levels to one of: HIGH_SCHOOL, BACHELOR, MASTER, PHD.";
-
-    public static final String PARSE_USER_PROMPT_TEMPLATE =
-            "Parse the following CV/resume text and extract structured information. " +
-                    "Return a JSON object with exactly these fields:\n" +
-                    "{\n" +
-                    "  \"full_name\": \"string or null\",\n" +
-                    "  \"email\": \"string or null\",\n" +
-                    "  \"phone\": \"string or null\",\n" +
-                    "  \"location\": \"string or null\",\n" +
-                    "  \"skills\": [\"array of skill strings\"],\n" +
-                    "  \"years_experience\": number or null,\n" +
-                    "  \"education_level\": \"HIGH_SCHOOL|BACHELOR|MASTER|PHD or null\",\n" +
-                    "  \"education_history\": [\n" +
-                    "    {\"degree\": \"string\", \"institution\": \"string\", \"year\": \"string\", \"field\": \"string\"}\n" +
-                    "  ],\n" +
-                    "  \"work_experience\": [\n" +
-                    "    {\"title\": \"string\", \"company\": \"string\", \"start_date\": \"string\", \"end_date\": \"string\", \"description\": \"string\"}\n" +
-                    "  ],\n" +
-                    "  \"certifications\": [\"array of certification strings\"],\n" +
-                    "  \"languages\": [\"array of language strings\"],\n" +
-                    "  \"summary\": \"string or null\"\n" +
-                    "}\n\n" +
-                    "CV Text:\n{raw_cv_text}";
+            """
+            You are a deterministic CV parser.
+            
+            Rules:
+            
+            - Return valid JSON only.
+            - Do not wrap the JSON in markdown code fences.
+            - Return exactly the fields specified in the user prompt.
+            - Never hallucinate information.
+            - Never infer missing information.
+            - If information is absent, return null or [].
+            - Normalize education level into:
+            HIGH_SCHOOL, BACHELOR, MASTER, PHD.
+            - Remove duplicate skills.
+            - Standardize skill names.
+            Examples:
+            
+            SpringBoot -> Spring Boot
+            JS -> JavaScript
+            TS -> TypeScript
+            
+            Dates must be YYYY-MM if available.
+            Years of experience must be calculated only from actual employment history.
+            
+            Use the same output for identical input every time.
+            """;
 
     public static final String SCORE_SYSTEM_PROMPT =
-            "You are an expert HR analyst specializing in candidate evaluation. " +
-                    "Your task is to objectively score a candidate against a job description on five criteria. " +
-                    "Always respond with valid JSON only. Be highly objective, critical, and consistent in your scoring. " +
-                    "Do not be overly generous; actively look for gaps and penalize heavily for missing requirements. " +
-                    "Each score must be an integer between 0 and 100.";
+            """
+            You are a deterministic HR scoring engine.
+            
+            Your job is NOT to estimate.
+            
+            Your job is to execute a fixed scoring algorithm.
+            
+            Rules:
+            
+            1. Use only information explicitly present.
+            2. Never hallucinate.
+            3. Never reward assumptions.
+            4. Start every category at 100.
+            5. Deduct points only.
+            6. Never add bonus points.
+            7. Use identical logic for identical input.
+            8. Round all scores to the nearest integer.
+            9. Return valid JSON only.
+            10. Do not wrap the JSON in markdown code fences.
+            11. Return exactly the fields specified in the user prompt.
+            12. Do not add extra fields or explanatory text.
+            
+            Always follow the scoring algorithm exactly.
+            """;
 
     public static final String SCORE_USER_PROMPT_TEMPLATE =
-            "Score the following candidate against the job description based on five criteria. " +
-                    "To prevent score inflation, use a DEDUCTIVE (gap-based) approach: start at 100 and subtract points for every missing or weak requirement.\n\n" +
-                    "CRITICAL SCORING RUBRIC:\n" +
-                    "1. Experience Score (0-100):\n" +
-                    "   - 90-100: Meets or exceeds the required years of professional, production-level experience. Demonstrates senior leadership or measurable impact.\n" +
-                    "   - 70-89: Mid-level experience. Operates independently with required tech stack but has minor domain gaps.\n" +
-                    "   - 50-69: Junior/Fresher level. Experience consists mostly of academic projects, internships, or is short of the required years in the JD.\n" +
-                    "   - Under 50: Little to no relevant professional experience.\n" +
-                    "   *MANDATORY RULE:* If the candidate has 0-1 years of actual working experience or is a student/fresher, the experience_score MUST NOT exceed 65, regardless of skill alignment.\n\n" +
-                    "2. Skills Score (0-100): Subtract 15-20 points for each core/must-have technical skill missing from the CV.\n\n" +
-                    "Return a JSON object with EXACTLY this structure:\n" +
-                    "{\n" +
-                    "  \"total_score\": number (0-100, mathematically calculated weighted average),\n" +
-                    "  \"skills_score\": number (0-100),\n" +
-                    "  \"experience_score\": number (0-100),\n" +
-                    "  \"education_score\": number (0-100),\n" +
-                    "  \"cert_score\": number (0-100),\n" +
-                    "  \"soft_skills_score\": number (0-100),\n" +
-                    "  \"evidence\": {\n" +
-                    "    \"skills_present\": [\"core skills matched in CV\"],\n" +
-                    "    \"skills_gaps\": [\"required skills missing or weak\"],\n" +
-                    "    \"actual_years_of_experience\": \"summary of candidate's actual employment years found in CV\"\n" +
-                    "  },\n" +
-                    "  \"reasoning\": {\n" +
-                    "    \"skills\": \"detailed critical justification for skills score\",\n" +
-                    "    \"experience\": \"explicit reasoning emphasizing actual job tenure vs JD requirements\",\n" +
-                    "    \"education\": \"detailed reasoning for education score\",\n" +
-                    "    \"certifications\": \"detailed reasoning for certification score\",\n" +
-                    "    \"soft_skills\": \"detailed reasoning for soft skills score\",\n" +
-                    "    \"overall\": \"overall assessment summary\"\n" +
-                    "  }\n" +
-                    "}\n\n" +
-                    "Scoring weights: Skills 35%, Experience 30%, Education 15%, Certifications 10%, Soft Skills 10%.\n\n" +
-                    "Job Description:\n{jd_text}\n\n" +
-                    "Candidate Profile:\n{parsed_profile_json}";
+            """
+            Evaluate the candidate using this deterministic process.
+            
+            STEP 1:
+            
+            Extract from Job Description:
+            
+            - Required years of experience
+            - Mandatory skills
+            - Optional skills
+            - Required degree
+            - Required certifications
+            - Required soft skills
+            
+            STEP 2:
+            
+            Compare candidate against each requirement.
+            
+            STEP 3:
+            
+            Calculate scores.
+            
+            SKILLS SCORE
+            
+            Start at 100.
+            
+            Deduct:
+            
+            -20 for each missing mandatory skill
+            -10 for each weak skill
+            -5 for each missing optional skill
+            
+            Minimum = 0.
+            
+            ---------------------------------
+            
+            EXPERIENCE SCORE
+            
+            Start at 100.
+            
+            If candidate is fresher/student:
+            
+            maximum score = 65.
+            
+            Otherwise:
+            
+            Missing 1 year = -10
+            Missing 2 years = -20
+            Missing 3 years = -30
+            Missing >3 years = -40
+            
+            No professional experience = 40.
+            
+            ---------------------------------
+            
+            EDUCATION SCORE
+            
+            Start at 100.
+            
+            Missing required degree = -30
+            
+            Unrelated major = -20
+            
+            ---------------------------------
+            
+            CERTIFICATION SCORE
+            
+            Start at 100.
+            
+            Missing each required certification = -20.
+            
+            ---------------------------------
+            
+            SOFT SKILLS SCORE
+            
+            Start at 100.
+            
+            Missing each required soft skill = -10.
+            
+            ---------------------------------
+            
+            STEP 4:
+            
+            Calculate total score.
+            
+            Formula:
+            
+            total_score =
+            round(
+            skills_score * 0.35 +
+            experience_score * 0.30 +
+            education_score * 0.15 +
+            cert_score * 0.10 +
+            soft_skills_score * 0.10
+            )
+            
+            STEP 5:
+            
+            Generate concise reasoning.
+            
+            Return EXACTLY this JSON object with no extra text:
+            
+            {
+              "total_score": 0,
+              "skills_score": 0,
+              "experience_score": 0,
+              "education_score": 0,
+              "cert_score": 0,
+              "soft_skills_score": 0,
+              "reasoning": {
+                "summary": "string",
+                "strengths": ["string"],
+                "gaps": ["string"]
+              }
+            }
+            
+            Do not deviate from this algorithm.
+            
+            Job Description:
+            
+            {jd_text}
+            
+            Candidate:
+            
+            {parsed_profile_json}
+            """;
 
     public static final String SUMMARY_SYSTEM_PROMPT =
-            "You are an expert HR analyst. Your task is to provide a concise, professional summary of a candidate's fit " +
-                    "for a specific role. Be highly objective and realistic, highlighting strengths and explicit gaps. " +
-                    "Always respond with valid JSON only.";
+            """
+            You are a deterministic HR summary engine.
+            
+            Use the total score only.
+            
+            Do not reinterpret scores.
+            
+            Recommendation rules:
+            
+            80-100 = STRONG_MATCH
+            
+            60-79 = POTENTIAL_MATCH
+            
+            0-59 = NOT_RECOMMENDED
+            
+            Never override these rules.
+            
+            Return valid JSON only.
+            Do not wrap the JSON in markdown code fences.
+            Return exactly the fields specified in the user prompt.
+            Do not add extra fields or explanatory text.
+            """;
 
     public static final String SUMMARY_USER_PROMPT_TEMPLATE =
-            "Based on the job description and candidate profile below, provide a professional assessment. " +
-                    "Ensure the recommendation strictly aligns with the total score.\n\n" +
-                    "Return a JSON object with exactly this structure:\n" +
-                    "{\n" +
-                    "  \"summary\": \"A 3-5 sentence professional summary of the candidate's fit for this role, mentioning seniority fit\",\n" +
-                    "  \"strengths\": [\"list of 3-5 key strengths relevant to the role\"],\n" +
-                    "  \"gaps\": [\"list of 1-3 notable gaps, missing technologies, or lack of commercial experience\"],\n" +
-                    "  \"recommendation\": \"STRONG_MATCH|POTENTIAL_MATCH|NOT_RECOMMENDED\",\n" +
-                    "  \"recommendation_reason\": \"One sentence explanation of the recommendation\"\n" +
-                    "}\n\n" +
-                    "Use these recommendation criteria:\n" +
-                    "- STRONG_MATCH: Candidate meets or exceeds most requirements, total score >= 75\n" +
-                    "- POTENTIAL_MATCH: Candidate meets core requirements with some gaps, total score 50-74\n" +
-                    "- NOT_RECOMMENDED: Candidate has significant gaps in key requirements, total score < 50\n\n" +
-                    "Job Description:\n{jd_text}\n\n" +
-                    "Candidate Profile:\n{parsed_profile_json}";
+            """
+            Generate a concise assessment.
+            
+            Rules:
+            
+            - 3 to 4 sentences.
+            - Mention strengths.
+            - Mention gaps.
+            - Mention seniority fit.
+            - Use the recommendation thresholds exactly.
+            
+            Return EXACTLY this JSON object with no extra text:
+            
+            {
+              "summary": "string",
+              "strengths": ["string"],
+              "gaps": ["string"],
+              "recommendation_reason": "string",
+              "recommendation": "STRONG_MATCH|POTENTIAL_MATCH|NOT_RECOMMENDED"
+            }
+            
+            Job Description:
+            
+            {jd_text}
+            
+            Candidate:
+            
+            {parsed_profile_json}
+            
+            Total Score:
+            
+            {total_score}
+            """;
+
+
+    public static final String PARSE_USER_PROMPT_TEMPLATE =
+            """
+            Parse the CV/resume below and extract structured information.
+            
+            IMPORTANT RULES:
+            
+            1. Return VALID JSON only.
+            2. Return EXACTLY the specified fields. Do not add extra fields.
+            3. Use only information explicitly stated in the CV.
+            4. Never infer or hallucinate missing information.
+            5. If a field is missing, use null or [].
+            6. Remove duplicate values.
+            7. Preserve chronological order for education and work history.
+            8. Standardize dates to YYYY-MM when possible.
+            9. Standardize skill names.
+            
+            Examples:
+            
+            SpringBoot -> Spring Boot
+            JS -> JavaScript
+            TS -> TypeScript
+            NodeJS -> Node.js
+            
+            10. years_experience must be calculated ONLY from actual professional employment.
+            
+            Exclude:
+            
+            - University projects
+            - Personal projects
+            - Academic projects
+            - Coursework
+            - Training programs
+            
+            unless explicitly described as paid professional work.
+            
+            11. If employment periods overlap, do not double count.
+            
+            12. If an end date is "Present", use "Present".
+            
+            Return EXACTLY this JSON structure:
+            
+            {
+              "full_name": "string or null",
+            
+              "email": "string or null",
+            
+              "phone": "string or null",
+            
+              "location": "string or null",
+            
+              "skills": [],
+            
+              "years_experience": number or null,
+            
+              "education_level": "HIGH_SCHOOL|BACHELOR|MASTER|PHD|null",
+            
+              "education_history": [
+                {
+                  "degree": "string",
+                  "institution": "string",
+                  "year": "string",
+                  "field": "string"
+                }
+              ],
+            
+              "work_experience": [
+                {
+                  "title": "string",
+            
+                  "company": "string",
+            
+                  "start_date": "YYYY-MM|string|null",
+            
+                  "end_date": "YYYY-MM|Present|string|null",
+            
+                  "description": "string"
+                }
+              ],
+            
+              "certifications": [],
+            
+              "languages": [],
+            
+              "summary": "string or null"
+            }
+            
+            CV TEXT:
+            
+            {raw_cv_text}
+            """;
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { jobService, type Job } from "../../services/jobService";
 import { cityService, type City } from "../../services/cityService";
+import { fileService } from "../../services/fileService";
 import { Button } from "../../components/ui/Button";
 import { ImageUpload } from "../../components/ui/ImageUpload";
 import { Input } from "../../components/ui/Input";
@@ -47,6 +48,7 @@ export default function JobList() {
   });
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
 
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
@@ -98,33 +100,14 @@ export default function JobList() {
     }
   };
 
-  const readFileAsDataUrl = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result);
-        } else {
-          reject(new Error('Unable to read image file'));
-        }
-      };
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-
   const handleLogoFileChange = async (file: File | null) => {
     if (!file) {
+      setPendingLogoFile(null);
       setFormData((prev) => ({ ...prev, logoUrl: "" }));
       return;
     }
 
-    try {
-      const logoDataUrl = await readFileAsDataUrl(file);
-      setFormData((prev) => ({ ...prev, logoUrl: logoDataUrl }));
-    } catch (error) {
-      console.error("Unable to read selected logo image", error);
-      setFormError("Please select a valid image file for the company logo.");
-    }
+    setPendingLogoFile(file);
   };
 
   const openCreateModal = () => {
@@ -143,6 +126,7 @@ export default function JobList() {
       deadline: new Date().toISOString().split('T')[0], // default to today
       status: "OPEN"
     });
+    setPendingLogoFile(null);
     setFormError("");
     setShowModal(true);
   };
@@ -164,6 +148,7 @@ export default function JobList() {
       deadline: job.deadline || "",
       status: job.status || "OPEN"
     });
+    setPendingLogoFile(null);
     setFormError("");
     setShowModal(true);
   };
@@ -195,10 +180,16 @@ export default function JobList() {
 
     try {
       const payload = buildJobPayload();
+      let logoUrl = payload.logoUrl || "";
+      if (pendingLogoFile) {
+        logoUrl = await fileService.uploadImage(pendingLogoFile);
+      }
+
+      const finalPayload = { ...payload, logoUrl };
       if (modalMode === 'create') {
-        await jobService.createJob(payload as Job);
+        await jobService.createJob(finalPayload as Job);
       } else if (modalMode === 'edit' && selectedJobId) {
-        await jobService.updateJob(selectedJobId, payload as Job);
+        await jobService.updateJob(selectedJobId, finalPayload as Job);
       }
       setShowModal(false);
       await fetchJobs(); // Refresh list
