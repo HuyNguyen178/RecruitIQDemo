@@ -14,6 +14,7 @@ import com.recruitiq.repository.JobRepository;
 import com.recruitiq.repository.ShortlistRepository;
 import com.recruitiq.repository.UserRepository;
 import com.recruitiq.service.ai.AiProcessingService;
+import com.recruitiq.model.ScoreRecord;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -341,7 +342,11 @@ public class CandidateService {
                 .collect(Collectors.toList());
 
         List<CandidateResponse> topTalents = allCandidates.stream()
-                .filter(c -> c.getScoreRecord() != null)
+                .filter(c -> {
+
+                    ScoreRecord sr = c.getScoreRecord();
+                    return sr != null && sr.getTotalScore() != null;
+                })
                 .sorted((c1, c2) -> Double.compare(c2.getScoreRecord().getTotalScore(), c1.getScoreRecord().getTotalScore()))
                 .limit(5)
                 .map(candidateMapper::toResponse)

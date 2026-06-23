@@ -74,5 +74,6 @@ public class JobMapper {
         job.setDeadline(request.getDeadline());
         job.setLogoUrl(request.getLogoUrl());
         job.setSalary(request.getSalary());
+        job.setStatus(request.getStatus());
     }
 }

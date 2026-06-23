@@ -47,7 +47,10 @@ public class JobRequest {
     @FutureDeadline
     private LocalDate deadline;
 
+    
     private String logoUrl;
+
+    private Job.JobStatus status;
 
     @ValidSalary
     private String salary;

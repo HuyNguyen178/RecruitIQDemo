@@ -8,11 +8,13 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="recruitiq" />
+        <module name="RecruitIQ" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="RecruitIQ" options="-parameters" />
       <module name="recruitiq" options="-parameters" />
     </option>
   </component>

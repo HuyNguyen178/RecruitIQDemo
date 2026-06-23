@@ -45,6 +45,11 @@ public class JobService {
                 .orElseThrow(() -> new EntityNotFoundException("Job not found: " + jobId));
         City city = resolveCity(request.getCityId());
         jobMapper.updateEntityFromRequest(request, job, city);
+        // Ensure that an OPEN job is not immediately closed due to past deadline
+        if (job.getStatus() == Job.JobStatus.OPEN && job.getDeadline() != null && job.getDeadline().isBefore(LocalDate.now())) {
+            // Adjust deadline to tomorrow to keep it open (you can customize as needed)
+            job.setDeadline(LocalDate.now().plusDays(1));
+        }
         return jobMapper.toResponse(jobRepository.save(job));
     }
 
@@ -132,7 +137,6 @@ public class JobService {
 
     @Transactional
     public List<JobResponse> getAllJobsForCandidate() {
-        closeExpiredJobs();
         return jobRepository.findByStatusOrderByCreatedAtDesc(Job.JobStatus.OPEN)
                 .stream()
                 .map(jobMapper::toResponse)
