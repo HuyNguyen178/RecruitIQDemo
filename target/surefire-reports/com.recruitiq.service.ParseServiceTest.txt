@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.recruitiq.service.ParseServiceTest
--------------------------------------------------------------------------------
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.389 s -- in com.recruitiq.service.ParseServiceTest
