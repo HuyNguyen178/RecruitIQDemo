@@ -17,7 +17,9 @@ export default function AdminLayout() {
         <div>
           <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">
             <Shield className="w-5 h-5 text-fuchsia-500 mr-2" />
-            <h1 className="text-lg font-bold text-white tracking-tight">System <span className="text-fuchsia-400">Admin</span></h1>
+            <Link to="/" className="text-lg font-bold text-white tracking-tight hover:opacity-85 transition-opacity">
+              System <span className="text-fuchsia-400">Admin</span>
+            </Link>
           </div>
           <nav className="flex-1 px-4 py-6 space-y-2">
           {navigation.map((item) => {

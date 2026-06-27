@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, Link } from "react-router-dom";
 import { Brain, CheckCircle2, ChevronRight } from "lucide-react";
 
 export default function AuthLayout() {
@@ -15,14 +15,14 @@ export default function AuthLayout() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
 
         {/* Top brand logo */}
-        <div className="flex items-center gap-2 relative z-10 select-none">
+        <Link to="/" className="flex items-center gap-2 relative z-10 select-none hover:opacity-85 transition-opacity">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#00b14f] to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
             <Brain className="w-5 h-5 text-white" />
           </div>
           <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
             Recruit<span className="text-[#00b14f]">IQ</span>
           </span>
-        </div>
+        </Link>
 
         {/* Middle hero contents */}
         <div className="my-auto space-y-8 relative z-10 max-w-lg">
@@ -74,14 +74,14 @@ export default function AuthLayout() {
         <div className="lg:hidden absolute bottom-10 left-10 w-72 h-72 bg-indigo-100/50 rounded-full blur-[80px] pointer-events-none"></div>
         
         {/* Brand logo for mobile screens */}
-        <div className="lg:hidden flex items-center gap-2 mb-8 select-none">
+        <Link to="/" className="lg:hidden flex items-center gap-2 mb-8 select-none hover:opacity-85 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#00b14f] to-emerald-400 flex items-center justify-center">
             <Brain className="w-4 h-4 text-white" />
           </div>
           <span className="text-xl font-extrabold tracking-tight text-slate-900">
             Recruit<span className="text-[#00b14f]">IQ</span>
           </span>
-        </div>
+        </Link>
 
         {/* Form Container */}
         <div className="w-full max-w-sm relative z-10">

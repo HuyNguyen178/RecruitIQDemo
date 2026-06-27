@@ -16,7 +16,9 @@ export default function HRLayout() {
       <aside className="w-64 bg-slate-950 text-slate-300 flex h-screen flex-col justify-between flex-shrink-0 overflow-y-auto">
         <div>
           <div className="h-16 flex items-center px-6 border-b border-slate-800">
-            <h1 className="text-xl font-bold text-white tracking-tight">RecruitIQ <span className="text-fuchsia-400">HR</span></h1>
+            <Link to="/" className="text-xl font-bold text-white tracking-tight hover:opacity-85 transition-opacity">
+              RecruitIQ <span className="text-fuchsia-400">HR</span>
+            </Link>
           </div>
           <nav className="flex-1 px-4 py-6 space-y-2">
           {navigation.map((item) => {

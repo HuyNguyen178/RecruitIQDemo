@@ -44,11 +44,14 @@ public class JobService {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new EntityNotFoundException("Job not found: " + jobId));
         City city = resolveCity(request.getCityId());
+        Job.JobStatus oldStatus = job.getStatus();
         jobMapper.updateEntityFromRequest(request, job, city);
-        // Ensure that an OPEN job is not immediately closed due to past deadline
-        if (job.getStatus() == Job.JobStatus.OPEN && job.getDeadline() != null && job.getDeadline().isBefore(LocalDate.now())) {
-            // Adjust deadline to tomorrow to keep it open (you can customize as needed)
-            job.setDeadline(LocalDate.now().plusDays(1));
+        
+        // If status is set/reopened to OPEN, set deadline to tomorrow if it was CLOSED, null, or in the past
+        if (job.getStatus() == Job.JobStatus.OPEN) {
+            if (oldStatus == Job.JobStatus.CLOSED || job.getDeadline() == null || job.getDeadline().isBefore(LocalDate.now())) {
+                job.setDeadline(LocalDate.now().plusDays(1));
+            }
         }
         return jobMapper.toResponse(jobRepository.save(job));
     }

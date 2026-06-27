@@ -46,6 +46,7 @@ public class CandidateService {
     private final JobService jobService;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final MailService mailService;
 
     @Transactional
     public List<CandidateResponse> uploadCvFiles(Long jobId, List<MultipartFile> files, User uploadedBy) {
@@ -150,6 +151,40 @@ public class CandidateService {
         shortlist.setDecidedAt(LocalDateTime.now());
 
         shortlistRepository.save(shortlist);
+
+        // Send email notification to candidate
+        try {
+            String candidateEmail = null;
+            if (candidate.getUser() != null) {
+                candidateEmail = candidate.getUser().getEmail();
+            }
+            if ((candidateEmail == null || candidateEmail.isEmpty()) && candidate.getParsedProfile() != null) {
+                candidateEmail = candidate.getParsedProfile().getEmail();
+            }
+
+            if (candidateEmail != null && !candidateEmail.isEmpty()) {
+                String candidateName = "Candidate";
+                if (candidate.getParsedProfile() != null && candidate.getParsedProfile().getFullName() != null) {
+                    candidateName = candidate.getParsedProfile().getFullName();
+                } else if (candidate.getUser() != null && candidate.getUser().getName() != null) {
+                    candidateName = candidate.getUser().getName();
+                }
+
+                String jobTitle = candidate.getJob() != null ? candidate.getJob().getTitle() : "the position";
+
+                mailService.sendDecisionEmail(
+                        candidateEmail,
+                        candidateName,
+                        jobTitle,
+                        request.getDecisionStatus().name(),
+                        request.getHrNotes()
+                );
+            } else {
+                log.warn("Candidate email not found for candidate id: {}. Cannot send status update email.", candidateId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to send status update email for candidate id: {}: {}", candidateId, e.getMessage());
+        }
 
         // Refresh để lấy dữ liệu shortlist mới nhất khi map sang Response
         return candidateMapper.toResponse(candidate);
@@ -287,9 +322,22 @@ public class CandidateService {
 
     // --- CHO DASHBOARD HR OFFICER ---
     @Transactional(readOnly = true)
-    public Map<String, Object> getHRDashboardStats() {
-        List<Candidate> allCandidates = candidateRepository.findAll();
-        List<Job> allJobs = jobRepository.findAll();
+    public Map<String, Object> getHRDashboardStats(User user) {
+        List<Job> allJobs;
+        List<Candidate> allCandidates;
+
+        if (user.getRole() == User.Role.ADMIN) {
+            allJobs = jobRepository.findAll();
+            allCandidates = candidateRepository.findAll();
+        } else {
+            allJobs = jobRepository.findByCreatedByWithCreatedByOrderByCreatedAtDesc(user);
+            List<Long> jobIds = allJobs.stream().map(Job::getId).toList();
+            if (jobIds.isEmpty()) {
+                allCandidates = List.of();
+            } else {
+                allCandidates = candidateRepository.findByJobIdIn(jobIds);
+            }
+        }
 
         long totalResumes = allCandidates.size();
         long pendingProcessing = allCandidates.stream()
