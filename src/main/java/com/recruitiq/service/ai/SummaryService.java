@@ -6,6 +6,7 @@ import com.recruitiq.ai.PromptConstants;
 import com.recruitiq.model.AiSummary;
 import com.recruitiq.model.Candidate;
 import com.recruitiq.repository.AiSummaryRepository;
+import com.recruitiq.repository.CandidateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class SummaryService {
 
     private final LlmApiClient llmApiClient;
     private final AiSummaryRepository aiSummaryRepository;
+    private final CandidateRepository candidateRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -43,9 +45,16 @@ public class SummaryService {
             profileJson = profileJson + "\n\nScore: " + candidate.getScoreRecord().getTotalScore();
         }
 
+        double totalScore = candidate.getScoreRecord() != null
+                ? candidate.getScoreRecord().getTotalScore() != null
+                    ? candidate.getScoreRecord().getTotalScore()
+                    : 0.0
+                : 0.0;
+
         String userPrompt = PromptConstants.SUMMARY_USER_PROMPT_TEMPLATE
                 .replace("{jd_text}", jdText)
-                .replace("{parsed_profile_json}", profileJson);
+                .replace("{parsed_profile_json}", profileJson)
+                .replace("{total_score}", String.valueOf(totalScore));
 
         String response = llmApiClient.callApi(PromptConstants.SUMMARY_SYSTEM_PROMPT, userPrompt);
 
@@ -62,7 +71,18 @@ public class SummaryService {
                     .recommendation(recommendation)
                     .build();
 
-            return aiSummaryRepository.save(summary);
+            AiSummary saved = aiSummaryRepository.save(summary);
+
+            // Ensure the bidirectional association is set and persisted so other
+            // transactions/read operations can observe the relationship.
+            try {
+                candidate.setAiSummary(saved);
+                candidateRepository.save(candidate);
+            } catch (Exception e) {
+                log.warn("Failed to set aiSummary on candidate {}: {}", candidate.getId(), e.getMessage());
+            }
+
+            return saved;
 
         } catch (Exception e) {
             log.error("Failed to parse summary response for candidate {}: {}", candidate.getId(), e.getMessage());

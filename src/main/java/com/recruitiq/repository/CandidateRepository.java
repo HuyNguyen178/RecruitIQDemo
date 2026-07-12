@@ -43,5 +43,15 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
     @Query("SELECT c FROM Candidate c LEFT JOIN FETCH c.job WHERE c.id = :id")
     java.util.Optional<Candidate> findByIdWithJob(@Param("id") Long id);
 
+    @Query("SELECT c FROM Candidate c " +
+            "LEFT JOIN FETCH c.job " +
+            "LEFT JOIN FETCH c.parsedProfile " +
+            "LEFT JOIN FETCH c.scoreRecord " +
+            "LEFT JOIN FETCH c.aiSummary " +
+            "LEFT JOIN FETCH c.shortlist " +
+            "LEFT JOIN FETCH c.user " +
+            "WHERE c.id = :id")
+    java.util.Optional<Candidate> findByIdWithAllDetails(@Param("id") Long id);
+
     List<Candidate> findByJobIdIn(List<Long> jobIds);
 }

@@ -120,7 +120,7 @@ public class CandidateService {
 
     @Transactional(readOnly = true)
     public CandidateResponse getCandidateDetail(Long id) {
-        return candidateRepository.findById(id)
+        return candidateRepository.findByIdWithAllDetails(id)
                 .map(candidateMapper::toResponse)
                 .orElseThrow(() -> new EntityNotFoundException("Candidate not found: " + id));
     }
