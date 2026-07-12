@@ -8,6 +8,4 @@ import java.util.Optional;
 
 @Repository
 public interface ScoreRecordRepository extends JpaRepository<ScoreRecord, Long> {
-
-    Optional<ScoreRecord> findByCandidateId(Long candidateId);
 }

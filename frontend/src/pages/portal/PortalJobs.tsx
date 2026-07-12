@@ -5,7 +5,7 @@ import { type Job } from "../../services/jobService";
 import { cityService, type City } from "../../services/cityService";
 import { Button } from "../../components/ui/Button";
 import {
-  Search, MapPin, Award, Briefcase, DollarSign, Calendar
+  Search, MapPin, Award, Briefcase, Calendar, DollarSign
 } from "lucide-react";
 
 export default function PortalJobs() {

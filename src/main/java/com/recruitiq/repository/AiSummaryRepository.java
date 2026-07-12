@@ -8,6 +8,4 @@ import java.util.Optional;
 
 @Repository
 public interface AiSummaryRepository extends JpaRepository<AiSummary, Long> {
-
-    Optional<AiSummary> findByCandidateId(Long candidateId);
 }

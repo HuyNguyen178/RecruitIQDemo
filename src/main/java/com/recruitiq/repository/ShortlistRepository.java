@@ -9,10 +9,5 @@ import java.util.Optional;
 
 @Repository
 public interface ShortlistRepository extends JpaRepository<Shortlist, Long> {
-
-    List<Shortlist> findByJobIdAndDecisionStatus(Long jobId, Shortlist.DecisionStatus decisionStatus);
-
     Optional<Shortlist> findByCandidateId(Long candidateId);
-
-    List<Shortlist> findByJobId(Long jobId);
 }

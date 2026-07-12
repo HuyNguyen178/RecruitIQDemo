@@ -670,7 +670,7 @@ export default function JobList() {
                   <label className="text-sm font-semibold text-slate-700" htmlFor="job-salary">Salary</label>
                   <Input
                     id="job-salary"
-                    placeholder="e.g. 15,000,000 VND - 25,000,000 VND"
+                    placeholder="e.g. $15,000 - $25,000"
                     value={formData.salary}
                     onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
                     className="text-slate-900"

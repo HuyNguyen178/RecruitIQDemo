@@ -5,7 +5,7 @@ import { type Job } from "../../services/jobService";
 import { Button } from "../../components/ui/Button";
 import { 
   ArrowLeft, Briefcase, Calendar, GraduationCap, Award, BookOpen, FileText,
-  DollarSign, CheckCircle2, ShieldAlert, Upload, MapPin
+  CheckCircle2, ShieldAlert, Upload, MapPin
 } from "lucide-react";
 
 export default function JobDetailPortal() {

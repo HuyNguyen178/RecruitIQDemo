@@ -8,6 +8,4 @@ import java.util.Optional;
 
 @Repository
 public interface ParsedProfileRepository extends JpaRepository<ParsedProfile, Long> {
-
-    Optional<ParsedProfile> findByCandidateId(Long candidateId);
 }
