@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { jobService, type Job } from "../../services/jobService";
 import { candidateService } from "../../services/candidateService";
@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/Button";
 import { 
   ArrowLeft, Upload, Download, Trash2, Users, FileText, 
   Calendar, GraduationCap, Award, Eye, Phone, Mail, 
-  BookOpen, Heart, X, Briefcase, UserCircle
+  BookOpen, Heart, X, Briefcase, UserCircle, ChevronUp, ChevronDown
 } from "lucide-react";
 
 function formatDateTime(value?: string) {
@@ -25,6 +25,8 @@ export default function JobDetail() {
   const { id } = useParams();
   const [job, setJob] = useState<Job | null>(null);
   const [candidates, setCandidates] = useState<any[]>([]);
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,9 +63,57 @@ export default function JobDetail() {
     fetchJobDetails(true);
   }, [id]);
 
+  // Derived sorted array for table rendering
+  const sortedCandidates = useMemo(() => {
+    const items = [...candidates];
+    items.sort((a, b) => {
+      let aValue: any = a.fullName || a.name || a.filename || "";
+      let bValue: any = b.fullName || b.name || b.filename || "";
+
+      switch (sortBy) {
+        case "name":
+          aValue = a.fullName || a.name || a.filename || "";
+          bValue = b.fullName || b.name || b.filename || "";
+          break;
+        case "status":
+          aValue = a.status || "";
+          bValue = b.status || "";
+          break;
+        case "uploadedBy":
+          aValue = a.uploadedByName || a.uploadedByEmail || "";
+          bValue = b.uploadedByName || b.uploadedByEmail || "";
+          break;
+        case "score":
+          aValue = a.score != null ? a.score : -1;
+          bValue = b.score != null ? b.score : -1;
+          break;
+        default:
+          break;
+      }
+
+      if (typeof aValue === "string") aValue = aValue.toLowerCase();
+      if (typeof bValue === "string") bValue = bValue.toLowerCase();
+
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+    return items;
+  }, [candidates, sortBy, sortDirection]);
+
+  const renderCandidateSortIndicator = (field: string) => {
+    if (sortBy !== field) {
+      return <ChevronUp className="w-3 h-3 text-slate-400 opacity-30" />;
+    }
+    return sortDirection === "asc" ? (
+      <ChevronUp className="w-3 h-3 text-slate-900" />
+    ) : (
+      <ChevronDown className="w-3 h-3 text-slate-900" />
+    );
+  };
+
   // Polling mechanism for live status updates
   useEffect(() => {
-    // Check if any candidate is still processing
     const hasProcessingCandidates = candidates.some(
       c => c.status !== 'COMPLETED' && c.status !== 'ERROR'
     );
@@ -272,22 +322,70 @@ export default function JobDetail() {
               <table className="w-full text-sm text-left text-slate-500">
                 <thead className="text-xs text-slate-700 uppercase bg-slate-100">
                   <tr>
-                    <th scope="col" className="px-6 py-3">Candidate Name / File</th>
-                    <th scope="col" className="px-6 py-3">Status</th>
-                    <th scope="col" className="px-6 py-3">Created By</th>
-                    <th scope="col" className="px-6 py-3">Score</th>
+                    <th
+                      scope="col"
+                      className="cursor-pointer px-6 py-3"
+                      onClick={() => {
+                        setSortBy("name");
+                        setSortDirection(sortBy === "name" && sortDirection === "asc" ? "desc" : "asc");
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Candidate Name / File
+                        {renderCandidateSortIndicator("name")}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="cursor-pointer px-6 py-3"
+                      onClick={() => {
+                        setSortBy("status");
+                        setSortDirection(sortBy === "status" && sortDirection === "asc" ? "desc" : "asc");
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Status
+                        {renderCandidateSortIndicator("status")}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="cursor-pointer px-6 py-3"
+                      onClick={() => {
+                        setSortBy("uploadedBy");
+                        setSortDirection(sortBy === "uploadedBy" && sortDirection === "asc" ? "desc" : "asc");
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Created By
+                        {renderCandidateSortIndicator("uploadedBy")}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="cursor-pointer px-6 py-3"
+                      onClick={() => {
+                        setSortBy("score");
+                        setSortDirection(sortBy === "score" && sortDirection === "asc" ? "desc" : "asc");
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Score
+                        {renderCandidateSortIndicator("score")}
+                      </div>
+                    </th>
                     <th scope="col" className="px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {candidates.length === 0 ? (
+                  {sortedCandidates.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
                         No candidates yet. Upload a CV to get started!
                       </td>
                     </tr>
                   ) : (
-                    candidates.map((candidate) => (
+                    sortedCandidates.map((candidate) => (
                       <tr key={candidate.id} className="bg-white border-b hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="font-semibold text-slate-900 flex items-center gap-2">

@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { adminService, type User } from "../../services/adminService";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
-import { Shield, ShieldAlert, ShieldCheck, UserPlus, X, Search, Eye, Pencil } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, UserPlus, X, Search, Eye, Pencil, ChevronUp, ChevronDown } from "lucide-react";
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
@@ -11,6 +11,8 @@ export default function UserManagement() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
   // Form State
   const [formData, setFormData] = useState({
@@ -142,6 +144,51 @@ export default function UserManagement() {
     user.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const sortedUsers = useMemo(() => {
+    const items = [...filteredUsers];
+    items.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortBy) {
+        case "name":
+          aValue = a.name || "";
+          bValue = b.name || "";
+          break;
+        case "email":
+          aValue = a.email || "";
+          bValue = b.email || "";
+          break;
+        case "role":
+          aValue = a.role || "";
+          bValue = b.role || "";
+          break;
+        default:
+          aValue = a.name || "";
+          bValue = b.name || "";
+      }
+
+      if (typeof aValue === "string") aValue = aValue.toLowerCase();
+      if (typeof bValue === "string") bValue = bValue.toLowerCase();
+
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+    return items;
+  }, [filteredUsers, sortBy, sortDirection]);
+
+  const renderUserSortIndicator = (field: string) => {
+    if (sortBy !== field) {
+      return <ChevronUp className="w-3 h-3 text-slate-400 opacity-30" />;
+    }
+    return sortDirection === "asc" ? (
+      <ChevronUp className="w-3 h-3 text-slate-900" />
+    ) : (
+      <ChevronDown className="w-3 h-3 text-slate-900" />
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -177,9 +224,45 @@ export default function UserManagement() {
           <table className="w-full text-sm text-left text-slate-500">
             <thead className="text-xs text-slate-700 uppercase bg-slate-50">
               <tr>
-                <th scope="col" className="px-6 py-3">User</th>
-                <th scope="col" className="px-6 py-3">Role</th>
-                <th scope="col" className="px-6 py-3">Status</th>
+                <th
+                  scope="col"
+                  className="cursor-pointer px-6 py-3"
+                  onClick={() => {
+                    setSortBy("name");
+                    setSortDirection(sortBy === "name" && sortDirection === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    User
+                    {renderUserSortIndicator("name")}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="cursor-pointer px-6 py-3"
+                  onClick={() => {
+                    setSortBy("role");
+                    setSortDirection(sortBy === "role" && sortDirection === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    Role
+                    {renderUserSortIndicator("role")}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="cursor-pointer px-6 py-3"
+                  onClick={() => {
+                    setSortBy("email");
+                    setSortDirection(sortBy === "email" && sortDirection === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    Email
+                    {renderUserSortIndicator("email")}
+                  </div>
+                </th>
                 <th scope="col" className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -195,7 +278,7 @@ export default function UserManagement() {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
+                sortedUsers.map((user) => (
                   <tr key={user.id} className="bg-white border-b hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-900">{user.name}</div>

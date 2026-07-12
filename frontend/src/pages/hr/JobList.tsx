@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { jobService, type Job } from "../../services/jobService";
 import { cityService, type City } from "../../services/cityService";
@@ -6,7 +6,7 @@ import { fileService } from "../../services/fileService";
 import { Button } from "../../components/ui/Button";
 import { ImageUpload } from "../../components/ui/ImageUpload";
 import { Input } from "../../components/ui/Input";
-import { Plus, Search, Eye, Pencil, Trash2, X, Briefcase, MapPin, Building, Calendar, GraduationCap, Award, Users, UserCircle } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2, X, Briefcase, MapPin, Building, Calendar, GraduationCap, Award, Users, UserCircle, ChevronUp, ChevronDown } from "lucide-react";
 import { validateJobForm } from "../../utils/jobFormValidation";
 
 function formatDateTime(value?: string) {
@@ -26,6 +26,8 @@ export default function JobList() {
   const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<string>("title");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -214,6 +216,59 @@ export default function JobList() {
     job.createdByEmail?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const sortedJobs = useMemo(() => {
+    const items = [...filteredJobs];
+    items.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortBy) {
+        case "title":
+          aValue = a.title || "";
+          bValue = b.title || "";
+          break;
+        case "createdBy":
+          aValue = a.createdByName || a.createdByEmail || "";
+          bValue = b.createdByName || b.createdByEmail || "";
+          break;
+        case "deadline":
+          aValue = a.deadline ? new Date(a.deadline).getTime() : 0;
+          bValue = b.deadline ? new Date(b.deadline).getTime() : 0;
+          break;
+        case "applicants":
+          aValue = a.candidateCount ?? 0;
+          bValue = b.candidateCount ?? 0;
+          break;
+        case "status":
+          aValue = a.status || "";
+          bValue = b.status || "";
+          break;
+        default:
+          aValue = a.title || "";
+          bValue = b.title || "";
+      }
+
+      if (typeof aValue === "string") aValue = aValue.toLowerCase();
+      if (typeof bValue === "string") bValue = bValue.toLowerCase();
+
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+    return items;
+  }, [filteredJobs, sortBy, sortDirection]);
+
+  const renderJobSortIndicator = (field: string) => {
+    if (sortBy !== field) {
+      return <ChevronUp className="w-3 h-3 text-slate-400 opacity-30" />;
+    }
+    return sortDirection === "asc" ? (
+      <ChevronUp className="w-3 h-3 text-slate-900" />
+    ) : (
+      <ChevronDown className="w-3 h-3 text-slate-900" />
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -247,12 +302,84 @@ export default function JobList() {
           <table className="w-full text-sm text-left text-slate-500">
             <thead className="text-xs text-slate-700 uppercase bg-slate-50">
               <tr>
-                <th scope="col" className="px-6 py-3">Job Details</th>
-                <th scope="col" className="px-6 py-3">Requirements</th>
-                <th scope="col" className="px-6 py-3">Created by</th>
-                <th scope="col" className="px-6 py-3">Deadline</th>
-                <th scope="col" className="px-6 py-3">Applicants</th>
-                <th scope="col" className="px-6 py-3">Status</th>
+                <th
+                  scope="col"
+                  className="cursor-pointer px-6 py-3"
+                  onClick={() => {
+                    setSortBy("title");
+                    setSortDirection(sortBy === "title" && sortDirection === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    Job Details
+                    {renderJobSortIndicator("title")}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="cursor-pointer px-6 py-3"
+                  onClick={() => {
+                    setSortBy("status");
+                    setSortDirection(sortBy === "status" && sortDirection === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    Requirements
+                    {renderJobSortIndicator("status")}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="cursor-pointer px-6 py-3"
+                  onClick={() => {
+                    setSortBy("createdBy");
+                    setSortDirection(sortBy === "createdBy" && sortDirection === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    Created by
+                    {renderJobSortIndicator("createdBy")}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="cursor-pointer px-6 py-3"
+                  onClick={() => {
+                    setSortBy("deadline");
+                    setSortDirection(sortBy === "deadline" && sortDirection === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    Deadline
+                    {renderJobSortIndicator("deadline")}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="cursor-pointer px-6 py-3"
+                  onClick={() => {
+                    setSortBy("applicants");
+                    setSortDirection(sortBy === "applicants" && sortDirection === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    Applicants
+                    {renderJobSortIndicator("applicants")}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="cursor-pointer px-6 py-3"
+                  onClick={() => {
+                    setSortBy("status");
+                    setSortDirection(sortBy === "status" && sortDirection === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    Status
+                    {renderJobSortIndicator("status")}
+                  </div>
+                </th>
                 <th scope="col" className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -268,7 +395,7 @@ export default function JobList() {
                   </td>
                 </tr>
               ) : (
-                filteredJobs.map((job) => (
+                sortedJobs.map((job) => (
                   <tr key={job.id} className="bg-white border-b hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
