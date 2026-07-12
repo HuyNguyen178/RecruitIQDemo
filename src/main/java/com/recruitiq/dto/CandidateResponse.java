@@ -31,6 +31,9 @@ public class CandidateResponse {
     private Double totalScore;
     private Double skillsScore;
     private Double experienceScore;
+    private Double educationScore;
+    private Double certScore;
+    private Double softSkillsScore;
 
     // Từ AiSummary
     private String recommendation; // STRONG_MATCH, POTENTIAL_MATCH...

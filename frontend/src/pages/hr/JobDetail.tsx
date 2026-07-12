@@ -40,8 +40,9 @@ export default function JobDetail() {
   const [hrNotes, setHrNotes] = useState<string>("");
   const [savingDecision, setSavingDecision] = useState(false);
 
-  const fetchJobDetails = async () => {
+  const fetchJobDetails = async (showLoader = true) => {
     if (!id) return;
+    if (showLoader) setLoading(true);
     try {
       const [jobData, candidatesData] = await Promise.all([
         jobService.getJobById(id),
@@ -52,13 +53,29 @@ export default function JobDetail() {
     } catch (error) {
       console.error("Failed to load job details", error);
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchJobDetails();
+    fetchJobDetails(true);
   }, [id]);
+
+  // Polling mechanism for live status updates
+  useEffect(() => {
+    // Check if any candidate is still processing
+    const hasProcessingCandidates = candidates.some(
+      c => c.status !== 'COMPLETED' && c.status !== 'ERROR'
+    );
+    
+    if (hasProcessingCandidates) {
+      const intervalId = setInterval(() => {
+        fetchJobDetails(false); // Fetch silently without full page loader
+      }, 3000); // Poll every 3 seconds
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [candidates, id]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -282,13 +299,25 @@ export default function JobDetail() {
                         <td className="px-6 py-4">
                           <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                             candidate.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 
-                            candidate.status === 'ERROR' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                            candidate.status === 'ERROR' ? 'bg-red-100 text-red-800' :
+                            candidate.status === 'PARSING' ? 'bg-blue-100 text-blue-800' :
+                            candidate.status === 'SCORING' ? 'bg-violet-100 text-violet-800' :
+                            candidate.status === 'SUMMARIZING' ? 'bg-indigo-100 text-indigo-800' :
+                            'bg-amber-100 text-amber-800'
                           }`}>
-                            {candidate.status}
+                            {candidate.status === 'PENDING' && '⏳ Waiting...'}
+                            {candidate.status === 'PARSING' && '📄 Reading CV...'}
+                            {candidate.status === 'SCORING' && '🤖 AI Scoring...'}
+                            {candidate.status === 'SUMMARIZING' && '✍️ Generating Summary...'}
+                            {candidate.status === 'COMPLETED' && '✅ Done'}
+                            {candidate.status === 'ERROR' && '❌ Failed'}
                           </span>
-                          {candidate.hasError && (
-                            <div className="text-xs text-red-500 mt-1 max-w-[150px] truncate" title={candidate.errorMessage}>
-                              {candidate.errorMessage}
+                          {candidate.status === 'ERROR' && candidate.errorMessage && (
+                            <div
+                              className="text-xs text-red-500 mt-1 max-w-[180px] truncate cursor-help"
+                              title={candidate.errorMessage}
+                            >
+                              ⚠️ {candidate.errorMessage}
                             </div>
                           )}
                         </td>
@@ -466,6 +495,39 @@ export default function JobDetail() {
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-2">
                       <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${selectedCandidate.experienceScore || 0}%` }}></div>
+                    </div>
+                  </div>
+
+                  {/* Education Score */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold text-slate-700">
+                      <span>Education Match</span>
+                      <span className="text-amber-600 font-bold">{selectedCandidate.educationScore}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2">
+                      <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${selectedCandidate.educationScore || 0}%` }}></div>
+                    </div>
+                  </div>
+
+                  {/* Certification Score */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold text-slate-700">
+                      <span>Cert Match</span>
+                      <span className="text-indigo-600 font-bold">{selectedCandidate.certScore}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2">
+                      <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${selectedCandidate.certScore || 0}%` }}></div>
+                    </div>
+                  </div>
+
+                  {/* Soft Skills Score */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold text-slate-700">
+                      <span>Soft Skills Match</span>
+                      <span className="text-rose-600 font-bold">{selectedCandidate.softSkillsScore}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2">
+                      <div className="bg-rose-500 h-2 rounded-full" style={{ width: `${selectedCandidate.softSkillsScore || 0}%` }}></div>
                     </div>
                   </div>
                 </div>

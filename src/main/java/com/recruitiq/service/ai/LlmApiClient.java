@@ -47,35 +47,48 @@ public class LlmApiClient {
                 continue;
             }
 
-            try {
-                log.info("Calling Gemini API with model: {}", currentModel);
-                return callGemini(currentModel, systemPrompt, userPrompt);
-            } catch (HttpClientErrorException e) {
-                if (e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.FORBIDDEN) {
-                    log.error("Gemini API key is invalid or forbidden for model {} ({}). Please check your API key.", currentModel, e.getStatusCode());
-                    throw new RuntimeException("Gemini API authentication failed (" + e.getStatusCode() + "): API key is invalid or forbidden. Please update llm.api.key in application.properties.", e);
-                }
-                log.warn("Gemini API request failed for model {} ({}). Trying next model if available.", currentModel, e.getStatusCode());
-                lastError = new RuntimeException("Gemini API call failed: " + e.getMessage(), e);
-            } catch (HttpServerErrorException e) {
-                if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
-                    log.warn("Too many requests to Gemini API. Waiting before retry...");
-                    try {
-                        Thread.sleep(2000);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
+            // Retry up to 3 times per model for transient errors (overload, timeout)
+            int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    log.info("Calling Gemini API with model: {} (attempt {}/{})", currentModel, attempt, maxRetries);
+                    return callGemini(currentModel, systemPrompt, userPrompt);
+
+                } catch (HttpClientErrorException e) {
+                    // 429 is a CLIENT error (4xx), not a server error - this is the correct place to handle it
+                    if (e.getStatusCode().value() == 429) {
+                        long waitMs = (long) Math.pow(2, attempt) * 1000; // exponential backoff: 2s, 4s, 8s
+                        log.warn("Rate limited (429) on model {}. Waiting {}ms before retry {}/{}...", currentModel, waitMs, attempt, maxRetries);
+                        try { Thread.sleep(waitMs); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                        lastError = new RuntimeException("Gemini API rate limited (429): " + e.getMessage(), e);
+                        continue; // retry
                     }
+                    if (e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.FORBIDDEN) {
+                        log.error("Gemini API key invalid or forbidden ({}). Check your API key.", e.getStatusCode());
+                        throw new RuntimeException("Gemini API authentication failed (" + e.getStatusCode() + "): API key is invalid. Please update llm.api.key.", e);
+                    }
+                    log.warn("Gemini client error on model {} ({}). Moving to next model.", currentModel, e.getStatusCode());
+                    lastError = new RuntimeException("Gemini API call failed: " + e.getMessage(), e);
+                    break; // don't retry 4xx errors (except 429)
+
+                } catch (HttpServerErrorException e) {
+                    // 5xx server errors - always retry with backoff
+                    long waitMs = (long) Math.pow(2, attempt) * 1000;
+                    log.warn("Gemini server error {} on model {}. Waiting {}ms before retry {}/{}...", e.getStatusCode(), currentModel, waitMs, attempt, maxRetries);
+                    try { Thread.sleep(waitMs); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                    lastError = new RuntimeException("Gemini API server error: " + e.getMessage(), e);
+                    // continue to next attempt
+
+                } catch (Exception e) {
+                    log.warn("Unexpected error calling Gemini model {} (attempt {}): {}", currentModel, attempt, e.getMessage());
+                    lastError = new RuntimeException("Gemini API call failed: " + e.getMessage(), e);
+                    break; // unexpected errors don't benefit from retry
                 }
-                log.warn("Gemini API server error for model {} ({}). Trying next model if available.", currentModel, e.getStatusCode());
-                lastError = new RuntimeException("Gemini API call failed: " + e.getMessage(), e);
-            } catch (Exception e) {
-                log.warn("Gemini API call failed for model {}. Trying next model if available.", currentModel, e);
-                lastError = new RuntimeException("Gemini API call failed: " + e.getMessage(), e);
             }
         }
 
         if (lastError != null) {
-            log.error("All Gemini model attempts failed. Last error: {}", lastError.getMessage());
+            log.error("All Gemini model attempts exhausted. Last error: {}", lastError.getMessage());
             throw lastError;
         }
         return getMockResponse(userPrompt);
@@ -91,7 +104,8 @@ public class LlmApiClient {
                         Map.of("parts", List.of(Map.of("text", userPrompt)))
                 ),
                 "generationConfig", Map.of(
-                        "response_mime_type", "application/json"
+                        "response_mime_type", "application/json",
+                        "temperature", 0.0
                 )
         );
 

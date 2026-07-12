@@ -36,7 +36,10 @@ public class CandidateMapper {
         if (candidate.getScoreRecord() != null) {
             builder.totalScore(candidate.getScoreRecord().getTotalScore())
                     .skillsScore(candidate.getScoreRecord().getSkillsScore())
-                    .experienceScore(candidate.getScoreRecord().getExperienceScore());
+                    .experienceScore(candidate.getScoreRecord().getExperienceScore())
+                    .educationScore(candidate.getScoreRecord().getEducationScore())
+                    .certScore(candidate.getScoreRecord().getCertScore())
+                    .softSkillsScore(candidate.getScoreRecord().getSoftSkillsScore());
         }
 
         // 3. Ánh xạ từ AiSummary
