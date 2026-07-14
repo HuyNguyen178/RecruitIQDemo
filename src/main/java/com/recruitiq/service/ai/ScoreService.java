@@ -43,7 +43,7 @@ public class ScoreService {
                 .replace("{parsed_profile_json}", profileJson);
 
         String response = llmApiClient.callApi(PromptConstants.SCORE_SYSTEM_PROMPT, userPrompt);
-
+        log.info("Raw score response for candidate {}: {}", candidate.getId(), response);
         try {
             String cleanedResponse = extractJson(response);
             JsonNode scoreNode = objectMapper.readTree(cleanedResponse);
@@ -51,15 +51,14 @@ public class ScoreService {
             ScoreRecord scoreRecord = ScoreRecord.builder()
                     .candidate(candidate)
                     .job(candidate.getJob())
-                    .totalScore(getDoubleValue(scoreNode, "total_score"))
-                    .skillsScore(getDoubleValue(scoreNode, "skills_score"))
-                    .experienceScore(getDoubleValue(scoreNode, "experience_score"))
-                    .educationScore(getDoubleValue(scoreNode, "education_score"))
-                    .certScore(getDoubleValue(scoreNode, "cert_score"))
-                    .softSkillsScore(getDoubleValue(scoreNode, "soft_skills_score"))
+                    .totalScore(getDoubleValue(scoreNode, "overall_score", "total_score"))
+                    .skillsScore(getDoubleValue(scoreNode, "skills_score", "skills_score"))
+                    .experienceScore(getDoubleValue(scoreNode, "experience_score", "experience_score"))
+                    .educationScore(getDoubleValue(scoreNode, "education_score", "education_score"))
+                    .certScore(getDoubleValue(scoreNode, "certification_score", "cert_score"))
+                    .softSkillsScore(getDoubleValue(scoreNode, "soft_skills_score", "soft_skills_score"))
                     .reasoningJson(getReasoningJson(scoreNode))
                     .build();
-
             return scoreRecordRepository.save(scoreRecord);
 
         } catch (Exception e) {
@@ -96,8 +95,11 @@ public class ScoreService {
         return response;
     }
 
-    private Double getDoubleValue(JsonNode node, String field) {
-        JsonNode fieldNode = node.get(field);
+    private Double getDoubleValue(JsonNode node, String primaryField, String fallbackField) {
+        JsonNode fieldNode = node.get(primaryField);
+        if (fieldNode == null || fieldNode.isNull()) {
+            fieldNode = node.get(fallbackField);
+        }
         if (fieldNode == null || fieldNode.isNull()) return null;
         try {
             return fieldNode.asDouble();

@@ -164,14 +164,14 @@ public class LlmApiClient {
                       "summary": "Experienced software engineer with 5 years of Java development experience."
                     }
                     """;
-        } else if (prompt.contains("Score the following candidate")) {
+        } else if (prompt.contains("Evaluate the candidate against the Job Description") || prompt.contains("overall_score")) {
             return """
                     {
-                      "total_score": 72.0,
+                      "overall_score": 72.0,
                       "skills_score": 75.0,
                       "experience_score": 70.0,
                       "education_score": 80.0,
-                      "cert_score": 60.0,
+                      "certification_score": 60.0,
                       "soft_skills_score": 70.0,
                       "reasoning": {
                         "skills": "Candidate has strong Java and Spring Boot skills matching the JD.",

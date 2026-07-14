@@ -79,6 +79,10 @@ export default function JobDetail() {
           aValue = a.status || "";
           bValue = b.status || "";
           break;
+        case "recommendation":
+          aValue = a.recommendation || "";
+          bValue = b.recommendation || "";
+          break;
         case "uploadedBy":
           aValue = a.uploadedByName || a.uploadedByEmail || "";
           bValue = b.uploadedByName || b.uploadedByEmail || "";
@@ -352,6 +356,19 @@ export default function JobDetail() {
                       scope="col"
                       className="cursor-pointer px-6 py-3"
                       onClick={() => {
+                        setSortBy("recommendation");
+                        setSortDirection(sortBy === "recommendation" && sortDirection === "asc" ? "desc" : "asc");
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Match
+                        {renderCandidateSortIndicator("recommendation")}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="cursor-pointer px-6 py-3"
+                      onClick={() => {
                         setSortBy("uploadedBy");
                         setSortDirection(sortBy === "uploadedBy" && sortDirection === "asc" ? "desc" : "asc");
                       }}
@@ -378,9 +395,9 @@ export default function JobDetail() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedCandidates.length === 0 ? (
+                    {sortedCandidates.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                      <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                         No candidates yet. Upload a CV to get started!
                       </td>
                     </tr>
@@ -420,6 +437,16 @@ export default function JobDetail() {
                           )}
                         </td>
                         <td className="px-6 py-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            candidate.recommendation === 'STRONG_MATCH' ? 'bg-emerald-100 text-emerald-800' :
+                            candidate.recommendation === 'POTENTIAL_MATCH' ? 'bg-blue-100 text-blue-800' :
+                            candidate.recommendation === 'NOT_RECOMMENDED' ? 'bg-red-100 text-red-800' :
+                            'bg-slate-100 text-slate-800'
+                          }`}>
+                            {candidate.recommendation?.replace('_', ' ') || 'PROCESSING'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
                           <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 space-y-1">
                             <div className="text-sm font-semibold text-slate-900">
                               {candidate.uploadedByName || "HR / Manual upload"}
@@ -434,6 +461,7 @@ export default function JobDetail() {
                                 {(candidate.uploadedByRole || candidate.createdByRole)?.replace('_', ' ')}
                               </div>
                             )}
+                            <div className="text-xs text-slate-500 mt-1">Uploaded: {formatDateTime(candidate.uploadedAt)}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 font-bold text-slate-900">

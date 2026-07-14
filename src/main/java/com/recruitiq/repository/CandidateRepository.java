@@ -18,6 +18,7 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
             "LEFT JOIN FETCH c.user u " +
             "LEFT JOIN FETCH c.scoreRecord sr " +
             "LEFT JOIN FETCH c.parsedProfile p " +
+            "LEFT JOIN FETCH c.aiSummary a " +
             "WHERE c.job.id = :jobId")
     List<Candidate> findByJobIdWithUserAndDetails(@Param("jobId") Long jobId);
 

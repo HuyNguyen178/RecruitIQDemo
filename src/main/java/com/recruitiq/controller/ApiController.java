@@ -44,6 +44,9 @@ public class ApiController {
                             ? candidate.getUser().getEmail() : null);
                     m.put("uploadedByRole", candidate.getUser() != null
                             ? candidate.getUser().getRole() != null ? candidate.getUser().getRole().name() : null : null);
+                    m.put("recommendation", candidate.getAiSummary() != null && candidate.getAiSummary().getRecommendation() != null
+                            ? candidate.getAiSummary().getRecommendation().name() : null);
+                    m.put("uploadedAt", candidate.getUploadedAt() != null ? candidate.getUploadedAt().toString() : null);
                     m.put("hasError", candidate.getProcessingStatus() == Candidate.ProcessingStatus.ERROR);
                     m.put("errorMessage", candidate.getErrorMessage() != null ? candidate.getErrorMessage() : "");
                     return m;

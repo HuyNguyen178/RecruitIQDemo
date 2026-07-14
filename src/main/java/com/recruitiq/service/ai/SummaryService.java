@@ -63,7 +63,7 @@ public class SummaryService {
             JsonNode summaryNode = objectMapper.readTree(cleanedResponse);
 
             String summaryText = buildSummaryText(summaryNode);
-            AiSummary.Recommendation recommendation = parseRecommendation(summaryNode);
+            AiSummary.Recommendation recommendation = parseRecommendation(summaryNode, totalScore);
 
             AiSummary summary = AiSummary.builder()
                     .candidate(candidate)
@@ -122,9 +122,14 @@ public class SummaryService {
         return sb.toString();
     }
 
-    private AiSummary.Recommendation parseRecommendation(JsonNode summaryNode) {
+    private AiSummary.Recommendation parseRecommendation(JsonNode summaryNode, double totalScore) {
         JsonNode recNode = summaryNode.get("recommendation");
-        if (recNode == null || recNode.isNull()) return AiSummary.Recommendation.POTENTIAL_MATCH;
+        if (recNode == null || recNode.isNull()) {
+            // Fall back to deterministic mapping from totalScore if the model did not include a recommendation
+            if (totalScore >= 80.0) return AiSummary.Recommendation.STRONG_MATCH;
+            if (totalScore >= 60.0) return AiSummary.Recommendation.POTENTIAL_MATCH;
+            return AiSummary.Recommendation.NOT_RECOMMENDED;
+        }
 
         String rec = recNode.asText().toUpperCase().replace(" ", "_");
         try {
@@ -132,7 +137,10 @@ public class SummaryService {
         } catch (IllegalArgumentException e) {
             if (rec.contains("STRONG")) return AiSummary.Recommendation.STRONG_MATCH;
             if (rec.contains("NOT") || rec.contains("NO")) return AiSummary.Recommendation.NOT_RECOMMENDED;
-            return AiSummary.Recommendation.POTENTIAL_MATCH;
+            // If parsing fails, fall back to score-based mapping
+            if (totalScore >= 80.0) return AiSummary.Recommendation.STRONG_MATCH;
+            if (totalScore >= 60.0) return AiSummary.Recommendation.POTENTIAL_MATCH;
+            return AiSummary.Recommendation.NOT_RECOMMENDED;
         }
     }
 
