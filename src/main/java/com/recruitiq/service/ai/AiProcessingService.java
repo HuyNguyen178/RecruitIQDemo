@@ -47,10 +47,11 @@ public class AiProcessingService {
         }
 
         try {
-            log.info("Starting unified AI processing for candidate {}", candidateId);
+            log.info("Phase 1: Parsing CV...");
             candidate.setProcessingStatus(Candidate.ProcessingStatus.PARSING);
             saveStatus(candidate);
 
+            log.info("Phase 2: Scoring...");
             String response = llmApiClient.callApi(
                     PromptConstants.AI_PROCESSING_SYSTEM_PROMPT,
                     buildUserPrompt(candidate)
@@ -66,6 +67,7 @@ public class AiProcessingService {
                 candidate.setParsedProfile(parsedProfile);
             }
 
+            log.info("Phase 3: Summarizing...");
             candidate.setProcessingStatus(Candidate.ProcessingStatus.SUMMARIZING);
             saveStatus(candidate);
             ScoreRecord scoreRecord = buildScoreRecord(root.path("score"), candidate);
