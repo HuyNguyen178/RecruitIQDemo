@@ -21,6 +21,68 @@ function formatDateTime(value?: string) {
   }
 }
 
+function renderReasoning(reasoningJson?: string, candidate?: any) {
+  if (!reasoningJson) {
+    return <p className="text-sm text-slate-500 italic">No detailed reasoning available yet.</p>;
+  }
+
+  try {
+    const parsed = JSON.parse(reasoningJson);
+    const scoreEntries = [
+      { key: "overall", label: "Overall", value: parsed.overall || parsed.summary || parsed.reasoning || "" },
+      { key: "skills", label: "Skills", value: parsed.skills || "" },
+      { key: "experience", label: "Experience", value: parsed.experience || "" },
+      { key: "education", label: "Education", value: parsed.education || "" },
+      { key: "certifications", label: "Certifications", value: parsed.certifications || parsed.certification || "" },
+      { key: "soft_skills", label: "Soft Skills", value: parsed.soft_skills || parsed.softSkills || "" },
+    ].filter((entry) => entry.value && String(entry.value).trim() !== "");
+
+    if (scoreEntries.length === 0) {
+      return <p className="text-sm text-slate-500 italic">No detailed reasoning available yet.</p>;
+    }
+
+    return (
+      <div className="space-y-3">
+        {scoreEntries.map((entry) => {
+          const text = String(entry.value);
+          const bulletPoints = text
+            .split(/(?<=[.!?])\s+/)
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+          return (
+            <div key={entry.key} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="font-semibold text-slate-900">{entry.label}</div>
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {candidate?.[`${entry.key}Score`] != null ? `${candidate[`${entry.key}Score`]}%` : ""}
+                </div>
+              </div>
+              <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
+                {bulletPoints.length > 0 ? (
+                  bulletPoints.map((item, index) => (
+                    <li key={`${entry.key}-${index}`} className="flex gap-2">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-fuchsia-500 shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="flex gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-fuchsia-500 shrink-0" />
+                    <span>{text}</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    );
+  } catch {
+    return <p className="text-sm text-slate-700 whitespace-pre-wrap">{reasoningJson}</p>;
+  }
+}
+
 export default function JobDetail() {
   const { id } = useParams();
   const [job, setJob] = useState<Job | null>(null);
@@ -656,6 +718,14 @@ export default function JobDetail() {
                       <div className="bg-rose-500 h-2 rounded-full" style={{ width: `${selectedCandidate.softSkillsScore || 0}%` }}></div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Score Reasoning */}
+              <div className="space-y-2">
+                <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Why this score?</span>
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  {renderReasoning(selectedCandidate.reasoningJson, selectedCandidate)}
                 </div>
               </div>
 

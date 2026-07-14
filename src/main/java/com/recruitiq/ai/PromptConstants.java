@@ -5,6 +5,62 @@ public final class PromptConstants {
     private PromptConstants() {
     }
 
+    public static final String AI_PROCESSING_SYSTEM_PROMPT =
+            """
+                    You are RecruitIQ's unified CV processing engine.
+
+                    Rules:
+                    - Return valid JSON only.
+                    - Do not wrap the JSON in markdown code fences.
+                    - Return exactly the structure specified in the user prompt.
+                    - Never hallucinate information.
+                    - If information is absent, use null or [] as appropriate.
+
+                    The response must include three top-level keys:
+                    1. "profile" with parsed candidate information.
+                    2. "score" with scoring details.
+                    3. "summary" with a concise recommendation summary.
+                    """;
+
+    public static final String AI_PROCESSING_USER_PROMPT_TEMPLATE =
+            """
+                    Candidate CV text:
+                    {raw_cv_text}
+
+                    Job description:
+                    {jd_text}
+
+                    Return JSON with the following structure:
+                    {
+                      "profile": {
+                        "full_name": "string or null",
+                        "email": "string or null",
+                        "phone": "string or null",
+                        "skills": ["string"],
+                        "years_experience": 0.0,
+                        "education_level": "HIGH_SCHOOL|BACHELOR|MASTER|PHD"
+                      },
+                      "score": {
+                        "overall_score": 0.0,
+                        "skills_score": 0.0,
+                        "experience_score": 0.0,
+                        "education_score": 0.0,
+                        "certification_score": 0.0,
+                        "soft_skills_score": 0.0,
+                        "reasoning": {
+                          "overall": "string"
+                        }
+                      },
+                      "summary": {
+                        "summary": "string",
+                        "strengths": ["string"],
+                        "gaps": ["string"],
+                        "recommendation": "STRONG_MATCH|POTENTIAL_MATCH|NOT_RECOMMENDED",
+                        "recommendation_reason": "string"
+                      }
+                    }
+                    """;
+
     public static final String PARSE_SYSTEM_PROMPT =
             """
                     You are a deterministic CV parser.

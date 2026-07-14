@@ -34,6 +34,7 @@ public class CandidateResponse {
     private Double educationScore;
     private Double certScore;
     private Double softSkillsScore;
+    private String reasoningJson;
 
     // Từ AiSummary
     private String recommendation; // STRONG_MATCH, POTENTIAL_MATCH...

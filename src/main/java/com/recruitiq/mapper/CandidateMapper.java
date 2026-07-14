@@ -39,7 +39,8 @@ public class CandidateMapper {
                     .experienceScore(candidate.getScoreRecord().getExperienceScore())
                     .educationScore(candidate.getScoreRecord().getEducationScore())
                     .certScore(candidate.getScoreRecord().getCertScore())
-                    .softSkillsScore(candidate.getScoreRecord().getSoftSkillsScore());
+                    .softSkillsScore(candidate.getScoreRecord().getSoftSkillsScore())
+                    .reasoningJson(candidate.getScoreRecord().getReasoningJson());
         }
 
         // 3. Ánh xạ từ AiSummary
