@@ -228,8 +228,8 @@ export default function JobList() {
           bValue = b.title || "";
           break;
         case "createdBy":
-          aValue = a.createdByName || a.createdByEmail || "";
-          bValue = b.createdByName || b.createdByEmail || "";
+          aValue = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          bValue = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           break;
         case "deadline":
           aValue = a.deadline ? new Date(a.deadline).getTime() : 0;

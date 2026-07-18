@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recruitiq.ai.PromptConstants;
 import com.recruitiq.model.AiSummary;
 import com.recruitiq.model.Candidate;
+import com.recruitiq.model.Job;
 import com.recruitiq.repository.AiSummaryRepository;
 import com.recruitiq.repository.CandidateRepository;
 import lombok.RequiredArgsConstructor;
@@ -51,8 +52,9 @@ public class SummaryService {
                     : 0.0
                 : 0.0;
 
+        String jobContext = buildJobContext(candidate.getJob(), jdText);
         String userPrompt = PromptConstants.SUMMARY_USER_PROMPT_TEMPLATE
-                .replace("{jd_text}", jdText)
+                .replace("{jd_text}", jobContext)
                 .replace("{parsed_profile_json}", profileJson)
                 .replace("{total_score}", String.valueOf(totalScore));
 
@@ -142,6 +144,18 @@ public class SummaryService {
             if (totalScore >= 60.0) return AiSummary.Recommendation.POTENTIAL_MATCH;
             return AiSummary.Recommendation.NOT_RECOMMENDED;
         }
+    }
+
+    private String buildJobContext(Job job, String jdText) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Job Title: ").append(job != null && job.getTitle() != null ? job.getTitle() : "N/A").append("\n");
+        builder.append("Department: ").append(job != null && job.getDepartment() != null ? job.getDepartment() : "N/A").append("\n");
+        builder.append("Location: ").append(job != null && job.getLocation() != null ? job.getLocation() : "N/A").append("\n");
+        builder.append("Required Skills: ").append(job != null && job.getRequiredSkills() != null ? job.getRequiredSkills() : "N/A").append("\n");
+        builder.append("Minimum Experience Years: ").append(job != null && job.getMinExperienceYears() != null ? job.getMinExperienceYears() : "N/A").append("\n");
+        builder.append("Required Education: ").append(job != null && job.getRequiredEducation() != null ? job.getRequiredEducation() : "N/A").append("\n");
+        builder.append("Job Description:\n").append(jdText != null ? jdText : "N/A");
+        return builder.toString();
     }
 
     private String extractJson(String response) {

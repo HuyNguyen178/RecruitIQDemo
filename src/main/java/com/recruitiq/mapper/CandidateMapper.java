@@ -29,7 +29,8 @@ public class CandidateMapper {
                     .email(candidate.getParsedProfile().getEmail())
                     .phone(candidate.getParsedProfile().getPhone())
                     .yearsExperience(candidate.getParsedProfile().getYearsExperience())
-                    .skills(candidate.getParsedProfile().getSkillsArray());
+                    .skills(candidate.getParsedProfile().getSkillsArray())
+                    .profileJson(candidate.getParsedProfile().getProfileJson());
         }
 
         // 2. Ánh xạ từ ScoreRecord

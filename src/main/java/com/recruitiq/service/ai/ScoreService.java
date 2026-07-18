@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recruitiq.ai.PromptConstants;
 import com.recruitiq.model.Candidate;
+import com.recruitiq.model.Job;
 import com.recruitiq.model.ScoreRecord;
 import com.recruitiq.repository.ScoreRecordRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,8 +39,9 @@ public class ScoreService {
             profileJson = "{}";
         }
 
+        String jobContext = buildJobContext(candidate.getJob(), jdText);
         String userPrompt = PromptConstants.SCORE_USER_PROMPT_TEMPLATE
-                .replace("{jd_text}", jdText)
+                .replace("{jd_text}", jobContext)
                 .replace("{parsed_profile_json}", profileJson);
 
         String response = llmApiClient.callApi(PromptConstants.SCORE_SYSTEM_PROMPT, userPrompt);
@@ -65,6 +67,18 @@ public class ScoreService {
             log.error("Failed to parse score response for candidate {}: {}", candidate.getId(), e.getMessage());
             throw new RuntimeException("Failed to score candidate: " + e.getMessage(), e);
         }
+    }
+
+    private String buildJobContext(Job job, String jdText) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Job Title: ").append(job != null && job.getTitle() != null ? job.getTitle() : "N/A").append("\n");
+        builder.append("Department: ").append(job != null && job.getDepartment() != null ? job.getDepartment() : "N/A").append("\n");
+        builder.append("Location: ").append(job != null && job.getLocation() != null ? job.getLocation() : "N/A").append("\n");
+        builder.append("Required Skills: ").append(job != null && job.getRequiredSkills() != null ? job.getRequiredSkills() : "N/A").append("\n");
+        builder.append("Minimum Experience Years: ").append(job != null && job.getMinExperienceYears() != null ? job.getMinExperienceYears() : "N/A").append("\n");
+        builder.append("Required Education: ").append(job != null && job.getRequiredEducation() != null ? job.getRequiredEducation() : "N/A").append("\n");
+        builder.append("Job Description:\n").append(jdText != null ? jdText : "N/A");
+        return builder.toString();
     }
 
     private String extractJson(String response) {

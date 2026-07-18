@@ -98,6 +98,15 @@ export default function JobDetail() {
 
   // Candidate detail states
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
+  const parsedProfile = useMemo(() => {
+    if (!selectedCandidate?.profileJson) return null;
+    try {
+      return JSON.parse(selectedCandidate.profileJson);
+    } catch (e) {
+      console.error("Failed to parse candidate profileJson", e);
+      return null;
+    }
+  }, [selectedCandidate]);
   const [showCandidateModal, setShowCandidateModal] = useState(false);
   const [fetchingCandidate, setFetchingCandidate] = useState(false);
   const [decisionStatus, setDecisionStatus] = useState<string>("PENDING");
@@ -146,8 +155,8 @@ export default function JobDetail() {
           bValue = b.recommendation || "";
           break;
         case "uploadedBy":
-          aValue = a.uploadedByName || a.uploadedByEmail || "";
-          bValue = b.uploadedByName || b.uploadedByEmail || "";
+          aValue = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+          bValue = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
           break;
         case "score":
           aValue = a.score != null ? a.score : -1;
@@ -227,7 +236,18 @@ export default function JobDetail() {
     }
   };
 
+  const isCandidateProcessing = (candidate: any) => {
+    const status = candidate?.status || candidate?.processingStatus;
+    return status === "PARSING" || status === "SCORING" || status === "SUMMARIZING" || status === "PENDING";
+  };
+
   const handleViewCandidate = async (candidateId: number) => {
+    const candidate = candidates.find((item) => item.id === candidateId);
+    if (candidate && isCandidateProcessing(candidate)) {
+      alert("This candidate is still being processed. Please wait until scoring is finished.");
+      return;
+    }
+
     setFetchingCandidate(true);
     try {
       const data = await candidateService.getCandidateById(candidateId);
@@ -264,6 +284,12 @@ export default function JobDetail() {
   };
 
   const handleDeleteCandidate = async (candidateId: number) => {
+    const candidate = candidates.find((item) => item.id === candidateId);
+    if (candidate && isCandidateProcessing(candidate)) {
+      alert("This candidate is still being processed. Please wait until scoring is finished before deleting.");
+      return;
+    }
+
     if (!window.confirm("Are you sure you want to remove this candidate? This action cannot be undone.")) return;
     
     try {
@@ -533,23 +559,25 @@ export default function JobDetail() {
                           <div className="flex items-center justify-end gap-1.5">
                             <button 
                               onClick={() => handleViewCandidate(candidate.id)}
-                              disabled={fetchingCandidate}
+                              disabled={fetchingCandidate || isCandidateProcessing(candidate)}
                               className="p-1.5 text-slate-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 rounded-md transition-colors disabled:opacity-50"
-                              title="View CV Details"
+                              title={isCandidateProcessing(candidate) ? "Processing in progress" : "View CV Details"}
                             >
                               <Eye className="w-4.5 h-4.5" />
                             </button>
                             <button 
                               onClick={() => handleDownloadCV(candidate.id)}
-                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                              title="Download CV"
+                              disabled={isCandidateProcessing(candidate)}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors disabled:opacity-50"
+                              title={isCandidateProcessing(candidate) ? "Processing in progress" : "Download CV"}
                             >
                               <Download className="w-4.5 h-4.5" />
                             </button>
                             <button 
                               onClick={() => handleDeleteCandidate(candidate.id)}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                              title="Delete Candidate"
+                              disabled={isCandidateProcessing(candidate)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                              title={isCandidateProcessing(candidate) ? "Processing in progress" : "Delete Candidate"}
                             >
                               <Trash2 className="w-4.5 h-4.5" />
                             </button>
@@ -644,6 +672,102 @@ export default function JobDetail() {
                   )}
                 </div>
               </div>
+
+              {/* Work Experience Timeline */}
+              {parsedProfile?.work_experience && parsedProfile.work_experience.length > 0 && (
+                <div className="space-y-3">
+                  <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider flex items-center gap-1.5">
+                    <Briefcase className="w-4 h-4 text-slate-400" />
+                    Work Experience
+                  </span>
+                  <div className="relative border-l border-slate-200 pl-4 ml-2 space-y-4">
+                    {parsedProfile.work_experience.map((work: any, idx: number) => (
+                      <div key={idx} className="relative">
+                        {/* Dot indicator */}
+                        <div className="absolute -left-[22px] mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-slate-300 ring-2 ring-slate-100" />
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900">{work.title}</h4>
+                          <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500 font-medium">
+                            <span className="text-slate-700 font-semibold">{work.company}</span>
+                            <span>•</span>
+                            <span>{work.start_date || 'N/A'} - {work.end_date || 'Present'}</span>
+                          </div>
+                          {work.description && (
+                            <p className="mt-1 text-xs text-slate-650 leading-relaxed text-slate-600 whitespace-pre-wrap">{work.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Education Timeline */}
+              {parsedProfile?.education_history && parsedProfile.education_history.length > 0 && (
+                <div className="space-y-3">
+                  <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-slate-400" />
+                    Education History
+                  </span>
+                  <div className="relative border-l border-slate-200 pl-4 ml-2 space-y-4">
+                    {parsedProfile.education_history.map((edu: any, idx: number) => (
+                      <div key={idx} className="relative">
+                        <div className="absolute -left-[22px] mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-slate-300 ring-2 ring-slate-100" />
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900">{edu.degree || 'Degree'} {edu.field ? `in ${edu.field}` : ''}</h4>
+                          <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500 font-medium">
+                            <span className="text-slate-700 font-semibold">{edu.institution || 'Institution'}</span>
+                            {edu.year && (
+                              <>
+                                <span>•</span>
+                                <span>Class of {edu.year}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Certifications and Languages Grid */}
+              {((parsedProfile?.languages && parsedProfile.languages.length > 0) || 
+                (parsedProfile?.certifications && parsedProfile.certifications.length > 0)) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {parsedProfile?.certifications && parsedProfile.certifications.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider flex items-center gap-1.5">
+                        <Award className="w-4 h-4 text-slate-400" />
+                        Certifications
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {parsedProfile.certifications.map((cert: string, idx: number) => (
+                          <span key={idx} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md text-xs font-semibold border border-indigo-100">
+                            {cert}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {parsedProfile?.languages && parsedProfile.languages.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider flex items-center gap-1.5">
+                        <UserCircle className="w-4 h-4 text-slate-400" />
+                        Languages
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {parsedProfile.languages.map((lang: string, idx: number) => (
+                          <span key={idx} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md text-xs font-semibold border border-emerald-100">
+                            {lang}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* AI Scores with Progress Bars */}
               <div className="space-y-3 bg-fuchsia-50/50 p-5 rounded-xl border border-fuchsia-100">

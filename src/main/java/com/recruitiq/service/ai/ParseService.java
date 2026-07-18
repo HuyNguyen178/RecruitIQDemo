@@ -33,11 +33,6 @@ public class ParseService {
             throw new RuntimeException("No raw text to parse for candidate: " + candidate.getId());
         }
 
-        // Truncate if too long (API limit)
-        if (rawText.length() > 15000) {
-            rawText = rawText.substring(0, 15000) + "\n[... truncated ...]";
-        }
-
         String userPrompt = PromptConstants.PARSE_USER_PROMPT_TEMPLATE
                 .replace("{raw_cv_text}", rawText);
 

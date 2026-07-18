@@ -167,20 +167,21 @@ public class LlmApiClient {
         } else if (prompt.contains("Evaluate the candidate against the Job Description") || prompt.contains("overall_score")) {
             return """
                     {
-                      "overall_score": 72.0,
+                      "internal_calculation_scratchpad": "Skills: Average (100+50)/2 = 75. Experience: Meets requirement (70). Education: Bachelor (80). Certifications: None (60). Soft skills: Collaborative (70). Overall: Weighted = 72.",
+                      "reasoning": {
+                        "skills": "Candidate has strong Java and Spring Boot skills matching the JD.",
+                        "experience": "5 years experience meets the minimum requirement.",
+                        "education": "Bachelor's degree in Computer Science is a good match.",
+                        "certification": "No certifications listed.",
+                        "soft_skills": "Work experience indicates collaboration and communication skills.",
+                        "overall": "Solid candidate who meets most requirements."
+                      },
                       "skills_score": 75.0,
                       "experience_score": 70.0,
                       "education_score": 80.0,
                       "certification_score": 60.0,
                       "soft_skills_score": 70.0,
-                      "reasoning": {
-                        "skills": "Candidate has strong Java and Spring Boot skills matching the JD.",
-                        "experience": "5 years experience meets the minimum requirement.",
-                        "education": "Bachelor's degree in Computer Science is a good match.",
-                        "certifications": "No certifications listed.",
-                        "soft_skills": "Work experience indicates collaboration and communication skills.",
-                        "overall": "Solid candidate who meets most requirements."
-                      }
+                      "overall_score": 72.0
                     }
                     """;
         } else {

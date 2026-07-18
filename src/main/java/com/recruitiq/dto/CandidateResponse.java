@@ -26,6 +26,7 @@ public class CandidateResponse {
     private String phone;
     private Double yearsExperience;
     private String skills;
+    private String profileJson;
 
     // Từ ScoreRecord
     private Double totalScore;
