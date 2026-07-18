@@ -61,7 +61,7 @@ public class SummaryService {
         String response = llmApiClient.callApi(PromptConstants.SUMMARY_SYSTEM_PROMPT, userPrompt);
 
         try {
-            String cleanedResponse = extractJson(response);
+            String cleanedResponse = JsonResponseExtractor.extractJson(response);
             JsonNode summaryNode = objectMapper.readTree(cleanedResponse);
 
             String summaryText = buildSummaryText(summaryNode);
@@ -158,31 +158,4 @@ public class SummaryService {
         return builder.toString();
     }
 
-    private String extractJson(String response) {
-        if (response == null) return "{}";
-
-        response = response.trim();
-
-        if (response.contains("```json")) {
-            int start = response.indexOf("```json") + 7;
-            int end = response.lastIndexOf("```");
-            if (end > start) {
-                response = response.substring(start, end).trim();
-            }
-        } else if (response.contains("```")) {
-            int start = response.indexOf("```") + 3;
-            int end = response.lastIndexOf("```");
-            if (end > start) {
-                response = response.substring(start, end).trim();
-            }
-        }
-
-        int start = response.indexOf('{');
-        int end = response.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            return response.substring(start, end + 1);
-        }
-
-        return response;
-    }
 }

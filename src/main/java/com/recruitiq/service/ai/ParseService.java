@@ -39,7 +39,7 @@ public class ParseService {
         String response = llmApiClient.callApi(PromptConstants.PARSE_SYSTEM_PROMPT, userPrompt);
 
         try {
-            String cleanedResponse = extractJson(response);
+            String cleanedResponse = JsonResponseExtractor.extractJson(response);
             JsonNode profileNode = objectMapper.readTree(cleanedResponse);
 
             ParsedProfile profile = ParsedProfile.builder()
@@ -59,36 +59,6 @@ public class ParseService {
             log.error("Failed to parse LLM response for candidate {}: {}", candidate.getId(), e.getMessage());
             throw new RuntimeException("Failed to parse CV profile: " + e.getMessage(), e);
         }
-    }
-
-    private String extractJson(String response) {
-        if (response == null) return "{}";
-
-        response = response.trim();
-
-        // Extract JSON from markdown code blocks if present
-        if (response.contains("```json")) {
-            int start = response.indexOf("```json") + 7;
-            int end = response.lastIndexOf("```");
-            if (end > start) {
-                response = response.substring(start, end).trim();
-            }
-        } else if (response.contains("```")) {
-            int start = response.indexOf("```") + 3;
-            int end = response.lastIndexOf("```");
-            if (end > start) {
-                response = response.substring(start, end).trim();
-            }
-        }
-
-        // Find first { and last }
-        int start = response.indexOf('{');
-        int end = response.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            return response.substring(start, end + 1);
-        }
-
-        return response;
     }
 
     private String getTextValue(JsonNode node, String field) {

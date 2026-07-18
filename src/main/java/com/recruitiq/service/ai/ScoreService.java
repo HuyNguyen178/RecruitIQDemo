@@ -45,9 +45,8 @@ public class ScoreService {
                 .replace("{parsed_profile_json}", profileJson);
 
         String response = llmApiClient.callApi(PromptConstants.SCORE_SYSTEM_PROMPT, userPrompt);
-        log.info("Raw score response for candidate {}: {}", candidate.getId(), response);
         try {
-            String cleanedResponse = extractJson(response);
+            String cleanedResponse = JsonResponseExtractor.extractJson(response);
             JsonNode scoreNode = objectMapper.readTree(cleanedResponse);
 
             ScoreRecord scoreRecord = ScoreRecord.builder()
@@ -79,34 +78,6 @@ public class ScoreService {
         builder.append("Required Education: ").append(job != null && job.getRequiredEducation() != null ? job.getRequiredEducation() : "N/A").append("\n");
         builder.append("Job Description:\n").append(jdText != null ? jdText : "N/A");
         return builder.toString();
-    }
-
-    private String extractJson(String response) {
-        if (response == null) return "{}";
-
-        response = response.trim();
-
-        if (response.contains("```json")) {
-            int start = response.indexOf("```json") + 7;
-            int end = response.lastIndexOf("```");
-            if (end > start) {
-                response = response.substring(start, end).trim();
-            }
-        } else if (response.contains("```")) {
-            int start = response.indexOf("```") + 3;
-            int end = response.lastIndexOf("```");
-            if (end > start) {
-                response = response.substring(start, end).trim();
-            }
-        }
-
-        int start = response.indexOf('{');
-        int end = response.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            return response.substring(start, end + 1);
-        }
-
-        return response;
     }
 
     private Double getDoubleValue(JsonNode node, String primaryField, String fallbackField) {

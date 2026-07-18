@@ -8,6 +8,10 @@ import {
   Search, MapPin, Award, Briefcase, Calendar, DollarSign
 } from "lucide-react";
 
+function getJobPreviewText(job: Job) {
+  return "";
+}
+
 export default function PortalJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -326,9 +330,9 @@ export default function PortalJobs() {
                           </div>
 
                           {/* Short Job Description Snippet */}
-                          {job.jdText && (
+                          {getJobPreviewText(job) && (
                             <p className="text-xs text-slate-400 font-normal line-clamp-1 pt-0.5 hidden sm:block">
-                              {job.jdText}
+                              {getJobPreviewText(job)}
                             </p>
                           )}
                         </div>

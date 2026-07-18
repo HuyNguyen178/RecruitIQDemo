@@ -5,8 +5,86 @@ import { type Job } from "../../services/jobService";
 import { Button } from "../../components/ui/Button";
 import { 
   ArrowLeft, Briefcase, Calendar, GraduationCap, Award, BookOpen, FileText,
-  CheckCircle2, ShieldAlert, Upload, MapPin, DollarSign
+  CheckCircle2, ShieldAlert, Upload, MapPin, DollarSign, Sparkles, CircleCheckBig
 } from "lucide-react";
+
+function renderRequirementBlocks(text?: string) {
+  if (!text) return null;
+
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return null;
+
+  const sections: Array<{ title: string; items: string[] }> = [];
+  let currentTitle: string | null = null;
+  let currentItems: string[] = [];
+
+  const flush = () => {
+    if (currentTitle && currentItems.length > 0) {
+      sections.push({ title: currentTitle, items: currentItems });
+    }
+    currentTitle = null;
+    currentItems = [];
+  };
+
+  lines.forEach((line) => {
+    const normalized = line.replace(/^[\-•*]\s*/, '').trim();
+    if (!normalized) return;
+
+    if (/^required qualifications$/i.test(normalized)) {
+      flush();
+      currentTitle = 'Required Qualifications';
+      return;
+    }
+
+    if (/^preferred qualifications$/i.test(normalized)) {
+      flush();
+      currentTitle = 'Preferred Qualifications';
+      return;
+    }
+
+    if (/^required skills$/i.test(normalized)) {
+      flush();
+      currentTitle = 'Required Skills';
+      return;
+    }
+
+    if (currentTitle) {
+      currentItems.push(normalized);
+    }
+  });
+
+  flush();
+
+  if (sections.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 whitespace-pre-wrap">
+        {text}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {sections.map((section) => (
+        <div key={section.title} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+          <h3 className="text-sm font-semibold text-slate-900 mb-2">{section.title}</h3>
+          <ul className="space-y-2">
+            {section.items.map((item, index) => (
+              <li key={`${section.title}-${index}`} className="flex gap-2 text-sm text-slate-700">
+                <CircleCheckBig className="w-4 h-4 text-[#00b14f] mt-0.5 shrink-0" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function JobDetailPortal() {
   const { id } = useParams();
@@ -232,36 +310,34 @@ export default function JobDetailPortal() {
               </div>
             </div>
 
-            {/* Required Target Core Technical Skills */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
-                <BookOpen className="w-4 h-4 text-[#00b14f]" /> Required Skills
-              </h2>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {job.requiredSkills ? (
-                  job.requiredSkills.split(',').map((skill, index) => (
-                    <span key={index} className="px-3 py-1 bg-slate-50 text-slate-600 rounded-md text-xs font-semibold border border-slate-200/70 hover:border-[#00b14f]/30 transition-colors">
-                      {skill.trim()}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-xs text-slate-400 font-medium italic">No specific professional framework skills demanded.</span>
-                )}
-              </div>
-            </div>
-
             {/* Job Description Full Details Box */}
             <div className="space-y-3 pt-2">
               <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
-                <FileText className="w-4 h-4 text-[#00b14f]" /> Job Specification Requirements
+                <FileText className="w-4 h-4 text-[#00b14f]" /> Job Description
               </h2>
-              <div className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap font-normal bg-white p-2 rounded-xl">
+              <div className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap font-normal bg-slate-50/70 p-4 rounded-xl border border-slate-200">
                 {job.jdText ? (
                   <div className="prose prose-slate max-w-none text-slate-600 font-medium leading-7">
                     {job.jdText}
                   </div>
                 ) : (
                   <p className="text-slate-400 font-medium italic text-xs">Job details documentation has not been populated by the provider yet.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Job Requirements */}
+            <div className="space-y-3">
+              <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
+                <Sparkles className="w-4 h-4 text-[#00b14f]" /> Qualifications & Requirements
+              </h2>
+              <div className="space-y-3 pt-1">
+                {job.requiredSkills ? (
+                  renderRequirementBlocks(job.requiredSkills)
+                ) : (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    No specific requirements provided yet.
+                  </div>
                 )}
               </div>
             </div>
