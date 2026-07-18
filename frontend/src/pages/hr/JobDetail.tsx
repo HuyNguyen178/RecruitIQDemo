@@ -203,16 +203,16 @@ export default function JobDetail() {
   }, [candidates, id]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !id) return;
+    const selectedFiles = Array.from(event.target.files ?? []);
+    if (selectedFiles.length === 0 || !id) return;
 
     setUploading(true);
     try {
-      await candidateService.uploadCV(id, file);
+      await candidateService.uploadCV(id, selectedFiles);
       await fetchJobDetails(); // Refresh list after upload
     } catch (error) {
-      console.error("Failed to upload CV", error);
-      alert("Failed to upload CV");
+      console.error("Failed to upload CVs", error);
+      alert("Failed to upload CVs");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -397,6 +397,7 @@ export default function JobDetail() {
                   ref={fileInputRef} 
                   className="hidden" 
                   accept=".pdf,.doc,.docx"
+                  multiple
                   onChange={handleFileUpload}
                 />
                 <Button 

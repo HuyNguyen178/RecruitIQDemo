@@ -11,10 +11,14 @@ export const candidateService = {
     return response.data;
   },
 
-  uploadCV: async (jobId: number | string, file: File) => {
+  uploadCV: async (jobId: number | string, files: File | File[]) => {
     const formData = new FormData();
-    formData.append('files', file);
-    
+    const selectedFiles = Array.isArray(files) ? files : [files];
+
+    selectedFiles.forEach((file) => {
+      formData.append('files', file);
+    });
+
     const response = await api.post(`/candidates/${jobId}/upload`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
