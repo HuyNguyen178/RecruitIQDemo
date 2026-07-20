@@ -4,6 +4,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.uploader.Uploader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -74,5 +75,21 @@ class FileProcessingServiceTest {
         String savedUrl = cloudinaryService.saveUploadedFile(file, 7L);
 
         assertEquals("https://res.cloudinary.com/demo/raw/upload/test.pdf", savedUrl);
+    }
+
+    @Test
+    void springContext_shouldInjectCloudinaryBeanIntoService() {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(Cloudinary.class, () -> new Cloudinary(Map.of(
+                    "cloud_name", "demo",
+                    "api_key", "test-key",
+                    "api_secret", "test-secret"
+            )));
+            context.registerBean(FileProcessingService.class);
+            context.refresh();
+
+            FileProcessingService service = context.getBean(FileProcessingService.class);
+            assertNotNull(ReflectionTestUtils.getField(service, "cloudinary"));
+        }
     }
 }

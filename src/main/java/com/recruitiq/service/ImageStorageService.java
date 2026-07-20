@@ -4,6 +4,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -35,7 +36,8 @@ public class ImageStorageService {
 
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList(".png", ".jpg", ".jpeg", ".gif", ".webp");
 
-    private final Cloudinary cloudinary;
+    @Autowired
+    private Cloudinary cloudinary;
 
     @Value("${cloudinary.cloud-name:}")
     private String configuredCloudName;

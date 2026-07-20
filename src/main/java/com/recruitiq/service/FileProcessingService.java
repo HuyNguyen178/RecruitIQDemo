@@ -8,6 +8,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -40,7 +41,8 @@ public class FileProcessingService {
 
     private static final Pattern CLOUDINARY_PUBLIC_ID_PATTERN = Pattern.compile("^(?:v\\d+/)?(.+?)(?:\\.[^.]+)?$");
 
-    private final Cloudinary cloudinary;
+    @Autowired
+    private Cloudinary cloudinary;
 
     @Value("${cloudinary.cloud-name:}")
     private String configuredCloudName;
@@ -95,30 +97,35 @@ public class FileProcessingService {
     public String saveUploadedFile(MultipartFile file, Long jobId) throws IOException {
         validateFile(file);
 
-        if (shouldUseCloudinary()) {
-            try {
-                Map<String, Object> uploadResult = cloudinary.uploader().upload(
-                        file.getBytes(),
-                        ObjectUtils.asMap(
-                                "folder", "recruitiq/cvs",
-                                "resource_type", "raw"
-                        )
-                );
+        log.info("Cloudinary check before upload - cloudName: {}, apiKeyPresent: {}, apiSecretPresent: {}, cloudinaryBeanPresent: {}",
+                configuredCloudName,
+                StringUtils.hasText(configuredApiKey),
+                StringUtils.hasText(configuredApiSecret),
+                cloudinary != null);
 
-                String publicUrl = (String) uploadResult.get("secure_url");
-                if (publicUrl == null || publicUrl.isBlank()) {
-                    throw new IllegalStateException("Cloudinary did not return a public URL");
-                }
-
-                log.info("Uploaded CV {} to Cloudinary", file.getOriginalFilename());
-                return publicUrl;
-            } catch (RuntimeException e) {
-                log.warn("Cloudinary upload failed, falling back to local storage: {}", e.getMessage());
-                return storeFileLocally(file, jobId);
-            }
+        if (!shouldUseCloudinary()) {
+            throw new IllegalStateException("Cloudinary is not configured. Please configure cloudinary.cloud-name, cloudinary.api-key, and cloudinary.api-secret.");
         }
 
-        return storeFileLocally(file, jobId);
+        try {
+            Map<String, Object> uploadResult = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", "recruitiq/cvs",
+                            "resource_type", "raw"
+                    )
+            );
+
+            String publicUrl = (String) uploadResult.get("secure_url");
+            if (publicUrl == null || publicUrl.isBlank()) {
+                throw new IllegalStateException("Cloudinary did not return a public URL");
+            }
+
+            log.info("Uploaded CV {} to Cloudinary", file.getOriginalFilename());
+            return publicUrl;
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("Cloudinary upload failed: " + e.getMessage(), e);
+        }
     }
 
     public void validateFile(MultipartFile file) {

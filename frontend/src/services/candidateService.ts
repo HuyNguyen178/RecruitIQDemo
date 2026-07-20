@@ -28,11 +28,16 @@ export const candidateService = {
   },
 
   downloadCV: async (id: number | string) => {
-    // Returns a blob so we can trigger a download in the browser
     const response = await api.get(`/candidates/${id}/download-cv`, {
       responseType: 'blob',
     });
     return response.data;
+  },
+
+  downloadCVResponse: async (id: number | string) => {
+    return api.get(`/candidates/${id}/download-cv`, {
+      responseType: 'blob',
+    });
   },
 
   exportCandidates: async (jobId: number | string) => {

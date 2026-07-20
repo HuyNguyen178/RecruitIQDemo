@@ -221,11 +221,20 @@ export default function JobDetail() {
 
   const handleDownloadCV = async (candidateId: number) => {
     try {
-      const blob = await candidateService.downloadCV(candidateId);
+      const candidate = candidates.find((item) => item.id === candidateId);
+      const response = await candidateService.downloadCVResponse(candidateId);
+      const blob = response.data;
+      const contentDisposition = response.headers['content-disposition'] || '';
+      const filenameMatch = contentDisposition.match(/filename\*?=(?:UTF-8''")?([^;]+)/i);
+      const originalName = candidate?.originalFilename || `CV_${candidateId}`;
+      const downloadName = filenameMatch?.[1]
+        ? decodeURIComponent(filenameMatch[1].replace(/^"|"$/g, ''))
+        : originalName;
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `CV_${candidateId}.pdf`; // Assume pdf for now
+      a.download = downloadName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
