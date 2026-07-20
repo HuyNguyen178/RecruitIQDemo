@@ -87,8 +87,4 @@ public class AiProcessingService {
         return "An unexpected error occurred while processing this CV. Please try again or contact support.";
     }
 
-    @Async("taskExecutor")
-    public void processCandidateAsync(Long candidateId) {
-        this.processCandidate(candidateId);
-    }
 }

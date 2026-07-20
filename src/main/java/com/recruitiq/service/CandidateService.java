@@ -288,10 +288,6 @@ public class CandidateService {
         return candidateMapper.toResponse(saved);
     }
 
-    public void processAsync(Long candidateId) {
-        aiProcessingService.processCandidateAsync(candidateId);
-    }
-
     //Dashboard
     @Transactional(readOnly = true)
     public List<CandidateResponse> getMyApplications(String email) {

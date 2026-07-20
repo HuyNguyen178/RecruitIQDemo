@@ -39,7 +39,7 @@ public class LlmApiClient {
             return getMockResponse(userPrompt);
         }
 
-        List<String> modelsToTry = List.of(model, "gemini-2.0-flash", "gemini-1.5-flash");
+        List<String> modelsToTry = List.of(model, "gemini-2.5-flash", "gemini-1.5-flash");
         RuntimeException lastError = null;
 
         for (String currentModel : modelsToTry) {
